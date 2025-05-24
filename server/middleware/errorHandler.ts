@@ -4,7 +4,7 @@ import { constants } from "../utils/constants";
 const errorHandler =
   (includeStackTrace: boolean = true) =>
   (err: Error, req: Request, res: Response, next: NextFunction) => {
-    const statusCode = res.statusCode ? res.statusCode : 500;
+    const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
 
     const responseObj: any = {
       title: "",
