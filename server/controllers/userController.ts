@@ -1,5 +1,14 @@
 import e, { Request, Response } from "express";
-import { createUser, getUserByEmail, getUserById, updateUser } from "../service/userService";
+import {
+  acceptFriendRequestService,
+  cancelFriendRequestService,
+  createUser,
+  getUserByEmail,
+  getUserById,
+  rejectFriendRequestService,
+  sendFriendRequestService,
+  updateUser,
+} from "../service/userService";
 import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
 import jwt from "jsonwebtoken";
@@ -225,5 +234,88 @@ export const changePassword = async (req: Request, res: Response) => {
     console.error("Change password error:", error);
     res.status(500);
     throw new Error("Internal server error while changing password");
+  }
+};
+
+export const sendFriendRequest = async (req: Request, res: Response) => {
+  try {
+    const fromId = req.user?.id;
+    const toId = req.body.id;
+
+    if (!fromId || !toId || fromId === toId) {
+      res.status(400);
+      throw new Error("Invalid request");
+    }
+    const success = await sendFriendRequestService(fromId, toId);
+
+    if (!success) {
+      throw new Error("Friend request already sent or users are already friends");
+    }
+
+    res.status(200).json({ message: "Friend request sent" });
+  } catch (error: any) {
+    console.error("Send friend request error:", error);
+    res.status(400);
+    throw new Error(error.message || "Error sending friend request");
+  }
+};
+
+export const handleFriendRequest = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const { requestId, action } = req.body;
+
+    if (!userId || !requestId || !action) {
+      res.status(400);
+      throw new Error("Invalid request");
+    }
+
+    if (action !== "accept" && action !== "reject") {
+      res.status(400);
+      throw new Error("Invalid action");
+    }
+
+    if (action === "accept") {
+      const success = await acceptFriendRequestService(userId, requestId);
+      if (!success) {
+        throw new Error("Failed to accept friend request or request not found");
+      }
+      res.status(200).json({ message: "Friend request accepted" });
+    }
+
+    if (action === "reject") {
+      const success = await rejectFriendRequestService(userId, requestId);
+      if (!success) {
+        throw new Error("Failed to reject friend request or request not found");
+      }
+      res.status(200).json({ message: "Friend request rejected" });
+    }
+  } catch (error: any) {
+    console.error("Handle friend request error:", error);
+    res.status(400);
+    throw new Error(error.message || "Error handling friend request");
+  }
+};
+
+export const cancelFriendRequest = async (req: Request, res: Response) => {
+  try {
+    const fromId = req.user?.id;
+    const toId = req.body.id;
+
+    if (!fromId || !toId || fromId === toId) {
+      res.status(400);
+      throw new Error("Invalid request");
+    }
+
+    const success = await cancelFriendRequestService(fromId, toId);
+    if (!success) {
+      throw new Error("Failed to cancel friend request or request not found");
+    }
+
+    res.status(200).json({ message: "Friend request cancelled" });
+  } catch (error: any) {
+    console.error("Cancel friend request error:", error);
+    res.status(400);
+    throw new Error(error.message || "Error cancelling friend request");
   }
 };

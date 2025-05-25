@@ -1,9 +1,12 @@
 import express from "express";
 import {
+  cancelFriendRequest,
   getCurrentUser,
+  handleFriendRequest,
   login,
   logout,
   registerUser,
+  sendFriendRequest,
   updateUserProfile,
 } from "../controllers/userController";
 import { validateToken } from "../middleware/validateToken";
@@ -16,5 +19,9 @@ router.post("/logout", logout);
 router.get("/me", validateToken, getCurrentUser);
 router.patch("/update", validateToken, updateUserProfile);
 router.patch("/update/password", validateToken, updateUserProfile);
+router.post("/friend-request", validateToken, sendFriendRequest);
+router.post("/friend-request/accept", validateToken, handleFriendRequest);
+router.post("/friend-request/reject", validateToken, handleFriendRequest);
+router.post("/friend-request/cancel", validateToken, cancelFriendRequest);
 
 export default router;
