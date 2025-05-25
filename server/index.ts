@@ -1,6 +1,6 @@
 import express, { Express, NextFunction, Request, Response } from "express";
 import dotenv from "dotenv";
-import { userRouter } from "./routes";
+import { postRouter, userRouter } from "./routes";
 import errorHandler from "./middleware/errorHandler";
 import { constants } from "./utils/constants";
 import cookieParser from "cookie-parser";
@@ -26,6 +26,7 @@ app.get("/", (req: Request, res: Response) => {
 
 // Routers
 app.use("/api/users", userRouter);
+app.use("/api/posts", postRouter);
 
 // Handle 404 Not Found
 app.use((req: Request, res: Response, next: NextFunction) => {
