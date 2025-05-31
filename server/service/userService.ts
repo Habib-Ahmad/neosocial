@@ -151,3 +151,31 @@ export const cancelFriendRequestService = async (
 
   return result.records.length > 0;
 };
+export const searchUsersService = async (
+  query: string,
+  status: string | null = null,
+  limit: number = 20,
+  offset: number = 0
+) => {
+  const result = await session.run(
+    `
+    MATCH (u:User)
+    WHERE (
+      toLower(u.username) CONTAINS toLower($query) OR
+      toLower(u.first_name) CONTAINS toLower($query) OR
+      toLower(u.last_name) CONTAINS toLower($query) OR
+      toLower(u.email) CONTAINS toLower($query)
+    )
+    AND ($status IS NULL OR u.status = $status)
+    RETURN u
+    ORDER BY u.last_active DESC
+    SKIP $offset LIMIT $limit
+    `,
+    { query, status, limit: Number(limit), offset: Number(offset) }
+  );
+
+  return result.records.map((r) => {
+    const { password_hash, ...user } = r.get("u").properties;
+    return user;
+  });
+};

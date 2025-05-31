@@ -32,7 +32,54 @@ export const createPostService = async (userId: string, body: any): Promise<Post
 
   return result.records[0].get("p").properties;
 };
+export const createCommentForPostService = async (
+  userId: string,
+  postId: string,
+  content: string
+) => {
+  const commentId = `comment-${uuidv4()}`;
+  const timestamp = new Date().toISOString();
 
+  const result = await session.run(
+    `
+    MATCH (u:User {id: $userId}), (p:Post {id: $postId})
+    CREATE (c:Comment {
+      id: $commentId,
+      content: $content,
+      created_at: datetime($timestamp),
+      updated_at: datetime($timestamp),
+      likes_count: 0,
+      is_deleted: false
+    })
+    CREATE (u)-[:COMMENTED {commented_at: datetime($timestamp)}]->(c)
+    CREATE (p)-[:HAS_COMMENT]->(c)
+    RETURN c
+    `,
+    {
+      userId,
+      postId,
+      content,
+      commentId,
+      timestamp,
+    }
+  );
+
+  return result.records[0].get("c").properties;
+};
+
+export const getCommentsForPostService = async (postId: string) => {
+  const result = await session.run(
+    `
+    MATCH (:Post {id: $postId})-[:HAS_COMMENT]->(c:Comment)
+    WHERE c.is_deleted = false
+    RETURN c
+    ORDER BY c.created_at ASC
+    `,
+    { postId }
+  );
+
+  return result.records.map((r) => r.get("c").properties);
+};
 export const getUserFeedService = async (userId: string): Promise<Post[]> => {
   const result = await session.run(`
     MATCH (p:Post)
