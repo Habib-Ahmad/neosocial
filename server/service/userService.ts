@@ -29,18 +29,31 @@ export const createUser = async (user: User) => {
   return createdUser;
 };
 
-export const getUserById = async (id: string) => {
+export const getUserByIdService = async (id: string) => {
   const result = await session.run(
     `
     MATCH (u:User {id: $id})
-    RETURN u
+    OPTIONAL MATCH (u)-[:FRIENDS_WITH]-(f:User)
+    OPTIONAL MATCH (u)-[:POSTED]->(p:Post)
+    RETURN u, count(DISTINCT f) AS friend_count, count(DISTINCT p) AS post_count
     `,
     { id }
   );
+
   if (result.records.length === 0) {
     return null;
   }
-  return result.records[0].get("u").properties;
+
+  const record = result.records[0];
+  const user = record.get("u").properties;
+  const friendCount = record.get("friend_count").toNumber();
+  const postCount = record.get("post_count").toNumber();
+
+  return {
+    ...user,
+    friend_count: friendCount,
+    post_count: postCount,
+  };
 };
 
 export const getUserByEmail = async (email: string) => {
@@ -150,4 +163,27 @@ export const cancelFriendRequestService = async (
   );
 
   return result.records.length > 0;
+};
+
+export const getUserFriendsService = async (userId: string): Promise<any[]> => {
+  const result = await session.run(
+    `
+    MATCH (u:User {id: $userId})-[:FRIENDS_WITH]-(friend:User)
+    RETURN friend
+    ORDER BY friend.first_name, friend.last_name
+    `,
+    { userId }
+  );
+
+  return result.records.map((record) => {
+    const friend = record.get("friend").properties;
+
+    return {
+      id: friend.id,
+      first_name: friend.first_name,
+      last_name: friend.last_name,
+      email: friend.email,
+      profile_picture: friend.profile_picture || "",
+    };
+  });
 };
