@@ -1,10 +1,11 @@
-import e, { Request, Response } from "express";
+import { Request, Response } from "express";
 import {
   acceptFriendRequestService,
   cancelFriendRequestService,
   createUser,
   getUserByEmail,
-  getUserById,
+  getUserByIdService,
+  getUserFriendsService,
   rejectFriendRequestService,
   sendFriendRequestService,
   updateUser,
@@ -134,26 +135,25 @@ export const logout = async (req: Request, res: Response) => {
   }
 };
 
-export const getCurrentUser = async (req: Request, res: Response) => {
+export const getUserById = async (req: Request, res: Response) => {
   try {
-    const user = req.user;
-    if (!user) {
-      res.status(401);
-      throw new Error("User not authenticated");
+    const userId = req.params.id;
+    if (!userId) {
+      res.status(400);
+      throw new Error("User ID is required");
     }
 
-    const userDetails = await getUserById(user.id);
-    console.log("User details:", userDetails);
-    if (!userDetails) {
+    const user = await getUserByIdService(userId);
+    if (!user) {
       res.status(404);
       throw new Error("User not found");
     }
-
-    res.status(200).json({ user: userDetails });
+    const { password_hash, ...userResponse } = user;
+    res.status(200).json({ message: "User fetched successfully", user: userResponse });
   } catch (error: any) {
-    console.error("Get current user error:", error);
+    console.error("Get user by ID error:", error);
     res.status(500);
-    throw new Error("Internal server error while fetching current user");
+    throw new Error("Internal server error while fetching user by ID");
   }
 };
 
@@ -206,7 +206,7 @@ export const changePassword = async (req: Request, res: Response) => {
       throw new Error("Please provide both current and new passwords");
     }
 
-    const existingUser = await getUserById(user.id);
+    const existingUser = await getUserByIdService(user.id);
     if (!existingUser) {
       res.status(404);
       throw new Error("User not found");
@@ -317,5 +317,27 @@ export const cancelFriendRequest = async (req: Request, res: Response) => {
     console.error("Cancel friend request error:", error);
     res.status(400);
     throw new Error(error.message || "Error cancelling friend request");
+  }
+};
+
+export const getUserFriends = async (req: Request, res: Response) => {
+  try {
+    const userId = req.params.id;
+    if (!userId) {
+      res.status(400);
+      throw new Error("User ID is required");
+    }
+
+    const friends = await getUserFriendsService(userId);
+    if (!friends) {
+      res.status(404);
+      throw new Error("User not found");
+    }
+
+    res.status(200).json({ message: "Friends fetched successfully", friends });
+  } catch (error: any) {
+    console.error("Get user friends error:", error);
+    res.status(500);
+    throw new Error("Internal server error while fetching user friends");
   }
 };
