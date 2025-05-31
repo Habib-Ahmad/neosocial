@@ -38,54 +38,120 @@ export const createPostService = async (userId: string, body: any): Promise<Post
   return result.records[0].get("p").properties;
 };
 
-export const getUserFeedService = async (userId: string): Promise<Post[]> => {
+export const getDiscoverFeedService = async (userId: string): Promise<Post[]> => {
   const session = driver.session();
-  const result = await session.run(`
-    MATCH (p:Post)
-    WHERE p.privacy_level = 'public' AND p.is_deleted = false
-    RETURN p
-    ORDER BY p.created_at DESC
-    LIMIT 50
-  `);
+  try {
+    const result = await session.run(
+      `
+      MATCH (u:User {id: $userId})
 
-  return result.records.map((r) => r.get("p").properties as Post);
+      OPTIONAL MATCH (u)-[:LIKES]->(:Post)-[:IN_CATEGORY]->(c:Category)
+      WITH u, collect(DISTINCT c.name) AS likedCategories
+
+      MATCH (author:User)-[:POSTED]->(p:Post)-[:IN_CATEGORY]->(pc:Category)
+      WHERE pc.name IN likedCategories AND author.privacy_level = 'public' AND p.is_deleted = false
+
+      OPTIONAL MATCH (u)-[:FRIENDS_WITH]-(f:User)-[:LIKES]->(fLiked:Post)<-[:POSTED]-(fAuthor:User)
+      WHERE fLiked.is_deleted = false AND fAuthor.privacy_level = 'public'
+
+      WITH collect(p) + collect(fLiked) AS allPosts, u
+      UNWIND allPosts AS post
+      WITH DISTINCT post, u
+
+      OPTIONAL MATCH (u)-[:LIKES]->(post)
+      MATCH (author:User)-[:POSTED]->(post)
+
+      RETURN post, author, u IS NOT NULL AS liked_by_me
+      ORDER BY post.created_at DESC
+      LIMIT 50
+      `,
+      { userId }
+    );
+
+    return result.records.map((record) => {
+      const rawPost = record.get("post").properties;
+      const rawUser = record.get("author").properties;
+      const likedByMe = record.get("liked_by_me");
+
+      return {
+        ...rawPost,
+        likes_count: toNumber(rawPost.likes_count),
+        comments_count: toNumber(rawPost.comments_count),
+        reposts_count: toNumber(rawPost.reposts_count),
+        created_at: timestampToDate(rawPost.created_at),
+        updated_at: timestampToDate(rawPost.updated_at),
+        liked_by_me: likedByMe,
+        author: {
+          id: rawUser.id,
+          name: `${rawUser.first_name} ${rawUser.last_name}`,
+          email: rawUser.email,
+          profile_picture: rawUser.profile_picture || "",
+        },
+      };
+    });
+  } finally {
+    await session.close();
+  }
 };
 
-export const getAllPostsService = async (viewerId: string): Promise<any[]> => {
+export const getLatestFeedService = async (viewerId: string): Promise<any[]> => {
   const session = driver.session();
-  const result = await session.run(
-    `
-    MATCH (u:User)-[:POSTED]->(p:Post)
-    OPTIONAL MATCH (viewer:User {id: $viewerId})-[:LIKES]->(p)
-    WHERE p.is_deleted = false
-    RETURN p, u, viewer IS NOT NULL AS liked_by_me
-    ORDER BY p.created_at DESC
-    LIMIT 100
-    `,
-    { viewerId }
-  );
+  try {
+    const result = await session.run(
+      `
+      MATCH (viewer:User {id: $viewerId})
+      OPTIONAL MATCH (viewer)-[:FRIENDS_WITH]-(f:User)
+      WITH viewer, collect(f) AS friends
+      WITH apoc.coll.union(friends, [viewer]) AS users
+      UNWIND users AS u
 
-  return result.records.map((record) => {
-    const rawPost = record.get("p").properties;
-    const rawUser = record.get("u").properties;
-    const likedByMe = record.get("liked_by_me");
+      OPTIONAL MATCH (u)-[:POSTED]->(p:Post)
+      WHERE p.is_deleted = false
 
-    return {
-      ...rawPost,
-      likes_count: toNumber(rawPost.likes_count),
-      comments_count: toNumber(rawPost.comments_count),
-      reposts_count: toNumber(rawPost.reposts_count),
-      created_at: timestampToDate(rawPost.created_at),
-      updated_at: timestampToDate(rawPost.updated_at),
-      liked_by_me: likedByMe,
-      author: {
-        id: rawUser.id,
-        name: `${rawUser.first_name} ${rawUser.last_name}`,
-        email: rawUser.email,
-        profile_picture: rawUser.profile_picture || "",
-      },
-    };
-  });
+      OPTIONAL MATCH (u)-[:LIKES]->(liked:Post)
+      WHERE liked.is_deleted = false
+
+      OPTIONAL MATCH (u)-[:REPOSTED]->(reposted:Post)
+      WHERE reposted.is_deleted = false
+
+      WITH collect(p) + collect(liked) + collect(reposted) AS allPosts
+      UNWIND allPosts AS post
+      WITH DISTINCT post
+
+      OPTIONAL MATCH (viewer)-[:LIKES]->(post)
+      MATCH (author:User)-[:POSTED]->(post)
+
+      RETURN post, author, viewer IS NOT NULL AS liked_by_me
+      ORDER BY post.created_at DESC
+      LIMIT 100
+      `,
+      { viewerId }
+    );
+
+    return result.records.map((record) => {
+      const rawPost = record.get("post").properties;
+      const rawUser = record.get("author").properties;
+      const likedByMe = record.get("liked_by_me");
+
+      return {
+        ...rawPost,
+        likes_count: toNumber(rawPost.likes_count),
+        comments_count: toNumber(rawPost.comments_count),
+        reposts_count: toNumber(rawPost.reposts_count),
+        created_at: timestampToDate(rawPost.created_at),
+        updated_at: timestampToDate(rawPost.updated_at),
+        liked_by_me: likedByMe,
+        author: {
+          id: rawUser.id,
+          name: `${rawUser.first_name} ${rawUser.last_name}`,
+          email: rawUser.email,
+          profile_picture: rawUser.profile_picture || "",
+        },
+      };
+    });
+  } finally {
+    await session.close();
+  }
 };
 
 export const getPostsByUserIdService = async (userId: string, viewerId: string): Promise<any[]> => {

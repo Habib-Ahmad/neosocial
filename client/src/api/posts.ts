@@ -7,8 +7,13 @@ export const createPost = async (payload: PostPayload) => {
   return response.data;
 };
 
-export const getAllPosts = async () => {
-  const response = await axiosInstance.get(urls.posts.getAll);
+export const getLatestFeed = async () => {
+  const response = await axiosInstance.get(urls.posts.getLatestFeed);
+  return response.data.posts;
+};
+
+export const getDiscoverFeed = async () => {
+  const response = await axiosInstance.get(urls.posts.getDiscoverFeed);
   return response.data.posts;
 };
 
