@@ -2,10 +2,10 @@ import { Request, Response } from "express";
 import {
   createPostService,
   deletePostService,
-  getAllPostsService,
+  getLatestFeedService,
   getPostByIdService,
   getPostsByUserIdService,
-  getUserFeedService,
+  getDiscoverFeedService,
   togglePostLikeService,
   updatePostService,
 } from "../service/postService";
@@ -44,7 +44,7 @@ export const createPost = async (req: Request, res: Response) => {
   }
 };
 
-export const getUserFeed = async (req: Request, res: Response) => {
+export const getDiscoverFeed = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -52,7 +52,7 @@ export const getUserFeed = async (req: Request, res: Response) => {
       throw new Error("Unauthorized: No token provided");
     }
 
-    const posts = await getUserFeedService(userId);
+    const posts = await getDiscoverFeedService(userId);
 
     res.status(200).json({
       message: "Fetched all posts successfully",
@@ -65,14 +65,14 @@ export const getUserFeed = async (req: Request, res: Response) => {
   }
 };
 
-export const getAllPosts = async (req: Request, res: Response) => {
+export const getLatestFeed = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
     if (!userId) {
       res.status(401);
       throw new Error("Unauthorized: No token provided");
     }
-    const posts = await getAllPostsService(userId);
+    const posts = await getLatestFeedService(userId);
 
     res.status(200).json({
       message: "Fetched all posts successfully",

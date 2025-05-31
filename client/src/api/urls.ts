@@ -14,7 +14,8 @@ export const urls = {
   },
   posts: {
     create: "/posts",
-    getAll: "/posts",
+    getLatestFeed: "/posts/latest",
+    getDiscoverFeed: "/posts/discover",
     getByUserId: (userId: string) => `/posts/user/${userId}`,
     getById: (id: string) => `/posts/${id}`,
     update: (id: string) => `/posts/${id}`,

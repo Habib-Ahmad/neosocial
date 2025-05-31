@@ -3,10 +3,10 @@ import { validateToken } from "../middleware/validateToken";
 import {
   createPost,
   deletePost,
-  getAllPosts,
+  getLatestFeed,
   getPostById,
   getPostsByUserId,
-  getUserFeed,
+  getDiscoverFeed,
   togglePostLike,
   updatePost,
 } from "../controllers/postController";
@@ -14,9 +14,9 @@ import {
 const router = express.Router();
 
 router.post("/", validateToken, createPost);
-router.get("/", validateToken, getAllPosts);
+router.get("/latest", validateToken, getLatestFeed);
+router.get("/discover", validateToken, getDiscoverFeed);
 router.get("/:id", validateToken, getPostById);
-router.get("/feed", validateToken, getUserFeed);
 router.get("/user/:id", validateToken, getPostsByUserId);
 router.patch("/:id/like", validateToken, togglePostLike);
 router.patch("/:id", validateToken, updatePost);
