@@ -11,6 +11,7 @@ export interface User extends SignupPayload {
   bio?: string;
   friend_count: number;
   post_count: number;
+  mutual_friends_count?: number;
   created_at: {
     nanosecond: { low: number; high: number };
     second: { low: number; high: number };
@@ -21,4 +22,14 @@ export interface User extends SignupPayload {
     year: { low: number; high: number };
     timeZoneOffsetSeconds: { low: number; high: number };
   };
+}
+
+export interface FriendRequest {
+  id: string;
+  type: "sent" | "received";
+  first_name: string;
+  last_name: string;
+  email: string;
+  profile_picture: string;
+  mutual_friends_count: number;
 }

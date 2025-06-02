@@ -269,10 +269,7 @@ const PostView: React.FC = () => {
             <CardContent className="p-4">
               <div className="flex space-x-3">
                 <img
-                  src={
-                    comment.author.profile_picture ||
-                    "https://preview.redd.it/milr969373561.jpg?width=640&crop=smart&auto=webp&s=0489105bbefd3decd68950da2334507dc25490fe"
-                  }
+                  src={comment.author.profile_picture}
                   alt={comment.author.name}
                   className="w-10 h-10 rounded-full border-2 border-purple-200"
                 />

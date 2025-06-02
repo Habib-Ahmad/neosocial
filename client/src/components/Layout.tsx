@@ -80,10 +80,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <img
-                  src={
-                    user?.profile_picture ||
-                    "https://preview.redd.it/milr969373561.jpg?width=640&crop=smart&auto=webp&s=0489105bbefd3decd68950da2334507dc25490fe"
-                  }
+                  src={user.profile_picture}
                   alt={user.first_name}
                   className="w-8 h-8 rounded-full border-2 border-purple-200"
                 />

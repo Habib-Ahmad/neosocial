@@ -21,7 +21,7 @@ export const createPostService = async (userId: string, body: any): Promise<Post
       likes_count: 0,
       comments_count: 0,
       reposts_count: 0,
-      media_urls: [],
+      media_urls: $mediaUrls
     })
     CREATE (u)-[:POSTED]->(p)
     RETURN p
@@ -32,6 +32,7 @@ export const createPostService = async (userId: string, body: any): Promise<Post
       now,
       content: body.content,
       category: body.category || "",
+      mediaUrls: [],
     }
   );
 
@@ -45,23 +46,23 @@ export const getDiscoverFeedService = async (userId: string): Promise<Post[]> =>
       `
       MATCH (u:User {id: $userId})
 
-      OPTIONAL MATCH (u)-[:LIKES]->(:Post)-[:IN_CATEGORY]->(c:Category)
+      OPTIONAL MATCH (u)-[:LIKED]->(:Post)-[:IN_CATEGORY]->(c:Category)
       WITH u, collect(DISTINCT c.name) AS likedCategories
 
       MATCH (author:User)-[:POSTED]->(p:Post)-[:IN_CATEGORY]->(pc:Category)
       WHERE pc.name IN likedCategories AND author.privacy_level = 'public' AND p.is_deleted = false
 
-      OPTIONAL MATCH (u)-[:FRIENDS_WITH]-(f:User)-[:LIKES]->(fLiked:Post)<-[:POSTED]-(fAuthor:User)
+      OPTIONAL MATCH (u)-[:FRIENDS_WITH]-(f:User)-[:LIKED]->(fLiked:Post)<-[:POSTED]-(fAuthor:User)
       WHERE fLiked.is_deleted = false AND fAuthor.privacy_level = 'public'
 
       WITH collect(p) + collect(fLiked) AS allPosts, u
       UNWIND allPosts AS post
       WITH DISTINCT post, u
 
-      OPTIONAL MATCH (u)-[:LIKES]->(post)
+      OPTIONAL MATCH (u)-[:LIKED]->(post)
       MATCH (author:User)-[:POSTED]->(post)
 
-      RETURN post, author, u IS NOT NULL AS liked_by_me
+      RETURN post, author, EXISTS((u)-[:LIKED]->(post)) AS liked_by_me
       ORDER BY post.created_at DESC
       LIMIT 50
       `,
@@ -108,7 +109,7 @@ export const getLatestFeedService = async (viewerId: string): Promise<any[]> => 
       OPTIONAL MATCH (u)-[:POSTED]->(p:Post)
       WHERE p.is_deleted = false
 
-      OPTIONAL MATCH (u)-[:LIKES]->(liked:Post)
+      OPTIONAL MATCH (u)-[:LIKED]->(liked:Post)
       WHERE liked.is_deleted = false
 
       OPTIONAL MATCH (u)-[:REPOSTED]->(reposted:Post)
@@ -118,10 +119,10 @@ export const getLatestFeedService = async (viewerId: string): Promise<any[]> => 
       UNWIND allPosts AS post
       WITH DISTINCT post
 
-      OPTIONAL MATCH (viewer)-[:LIKES]->(post)
+      OPTIONAL MATCH (viewer)-[:LIKED]->(post)
       MATCH (author:User)-[:POSTED]->(post)
 
-      RETURN post, author, viewer IS NOT NULL AS liked_by_me
+      RETURN post, author, EXISTS((viewer)-[:LIKED]->(post)) AS liked_by_me
       ORDER BY post.created_at DESC
       LIMIT 100
       `,
@@ -159,9 +160,10 @@ export const getPostsByUserIdService = async (userId: string, viewerId: string):
   const result = await session.run(
     `
     MATCH (author:User {id: $userId})-[:POSTED]->(p:Post)
-    OPTIONAL MATCH (viewer:User {id: $viewerId})-[:LIKES]->(p)
+    OPTIONAL MATCH (viewer:User {id: $viewerId})
+    WITH p, author, viewer, EXISTS((viewer)-[:LIKED]->(p)) AS liked_by_me
     WHERE p.is_deleted = false
-    RETURN p, author, viewer IS NOT NULL AS liked_by_me
+    RETURN p, author, liked_by_me
     ORDER BY p.created_at DESC
     `,
     { userId, viewerId }
@@ -196,8 +198,9 @@ export const getPostByIdService = async (id: string, viewerId: string): Promise<
     `
     MATCH (u:User)-[:POSTED]->(p:Post {id: $id})
     OPTIONAL MATCH (p)-[:HAS_COMMENT]->(c:Comment)<-[:COMMENTED]-(cu:User)
-    OPTIONAL MATCH (viewer:User {id: $viewerId})-[:LIKES]->(p)
-    RETURN p, u, viewer IS NOT NULL AS liked_by_me,
+    OPTIONAL MATCH (viewer:User {id: $viewerId})
+    WITH p, u, c, cu, viewer, EXISTS((viewer)-[:LIKED]->(p)) AS liked_by_me
+    RETURN p, u, liked_by_me,
       collect({
         id: c.id,
         content: c.content,
@@ -252,7 +255,7 @@ export const togglePostLikeService = async (userId: string, postId: string): Pro
   const result = await session.run(
     `
     MATCH (u:User {id: $userId}), (p:Post {id: $postId})
-    OPTIONAL MATCH (u)-[r:LIKES]->(p)
+    OPTIONAL MATCH (u)-[r:LIKED]->(p)
     WITH u, p, r, 
         CASE WHEN r IS NOT NULL THEN true ELSE false END AS alreadyLiked
     FOREACH (_ IN CASE WHEN alreadyLiked THEN [1] ELSE [] END |
@@ -260,7 +263,7 @@ export const togglePostLikeService = async (userId: string, postId: string): Pro
       SET p.likes_count = coalesce(p.likes_count, 1) - 1
     )
     FOREACH (_ IN CASE WHEN NOT alreadyLiked THEN [1] ELSE [] END |
-      CREATE (u)-[:LIKES]->(p)
+      CREATE (u)-[:LIKED]->(p)
       SET p.likes_count = coalesce(p.likes_count, 0) + 1
     )
     WITH p, NOT alreadyLiked AS liked_by_me
