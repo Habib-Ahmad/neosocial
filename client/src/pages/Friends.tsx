@@ -1,66 +1,138 @@
-
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Search, UserPlus, UserMinus, Check, X } from 'lucide-react';
-import { mockFriends } from '@/data/mockData';
-import { useToast } from '@/hooks/use-toast';
+import React, { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Search, UserPlus, UserMinus, Check, X } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { FriendRequest, User } from "@/interface/User";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  acceptFriendRequest,
+  cancelFriendRequest,
+  getFriendRequests,
+  getFriendSuggestions,
+  getUserFriends,
+  rejectFriendRequest,
+  removeFriend,
+} from "@/api/auth";
 
 const Friends: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState('');
+  const { user } = useAuth();
+  const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const mockFriendRequests = [
-    {
-      id: '1',
-      name: 'Alex Wilson',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
-      mutualFriends: 5,
-      type: 'received' as const
+  const friendsData = useQuery<User[]>({
+    queryKey: [`userFriends/${user?.id}`],
+    queryFn: () => getUserFriends(user?.id || ""),
+    enabled: !!user?.id,
+  });
+
+  const friendRequestData = useQuery<FriendRequest[]>({
+    queryKey: [`friendRequests/${user?.id}`],
+    queryFn: () => getFriendRequests(),
+    enabled: !!user?.id,
+  });
+
+  const friendSuggestions = useQuery<User[]>({
+    queryKey: [`friendSuggestions/${user?.id}`],
+    queryFn: () => getFriendSuggestions(),
+    enabled: !!user?.id,
+  });
+
+  const { mutateAsync: acceptRequest } = useMutation({
+    mutationFn: acceptFriendRequest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [`userFriends/${user?.id}`],
+        exact: true,
+      });
     },
-    {
-      id: '2',
-      name: 'Emma Davis',
-      avatar: 'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=150&h=150&fit=crop&crop=face',
-      mutualFriends: 3,
-      type: 'sent' as const
-    }
-  ];
+  });
 
-  const filteredFriends = mockFriends.filter(friend =>
-    friend.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const { mutateAsync: rejectRequest } = useMutation({
+    mutationFn: rejectFriendRequest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [`friendRequests/${user?.id}`],
+        exact: true,
+      });
+    },
+  });
+
+  const { mutateAsync: cancelRequest } = useMutation({
+    mutationFn: cancelFriendRequest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [`friendRequests/${user?.id}`],
+        exact: true,
+      });
+    },
+  });
+
+  const { mutateAsync: remove } = useMutation({
+    mutationFn: removeFriend,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [`userFriends/${user?.id}`],
+        exact: true,
+      });
+    },
+  });
+
+  const filteredFriends = friendsData.data?.filter((friend) =>
+    `${friend.first_name} ${friend.last_name}`
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase())
   );
 
-  const handleAcceptRequest = (friendId: string, friendName: string) => {
+  const handleAcceptRequest = async (friendId: string, name: string) => {
+    await acceptRequest(friendId);
     toast({
       title: "Friend request accepted",
-      description: `You are now friends with ${friendName}`,
+      description: `You are now friends with ${name}`,
     });
   };
 
-  const handleRejectRequest = (friendId: string, friendName: string) => {
+  const handleRejectRequest = async (friendId: string, name: string) => {
+    await rejectRequest(friendId);
     toast({
-      title: "Friend request rejected",
-      description: `Rejected friend request from ${friendName}`,
+      title: "Friend request declined",
+      description: `Declined friend request from ${name}`,
     });
   };
 
-  const handleCancelRequest = (friendId: string, friendName: string) => {
+  const handleCancelRequest = async (friendId: string, name: string) => {
+    await cancelRequest(friendId);
     toast({
       title: "Friend request cancelled",
-      description: `Cancelled friend request to ${friendName}`,
+      description: `Cancelled friend request to ${name}`,
     });
   };
 
-  const handleRemoveFriend = (friendId: string, friendName: string) => {
+  const handleRemoveFriend = async (friendId: string, name: string) => {
+    await remove(friendId);
     toast({
       title: "Friend removed",
-      description: `Removed ${friendName} from your friends`,
-      variant: "destructive",
+      description: `You have removed ${name} from your friends`,
     });
   };
+
+  if (friendsData.isPending) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <Card className="backdrop-blur-sm bg-white/80 border-purple-100 shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+              Loading Friends...
+            </CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -74,19 +146,19 @@ const Friends: React.FC = () => {
 
       <Tabs defaultValue="friends" className="w-full">
         <TabsList className="grid w-full grid-cols-3 bg-white/80 backdrop-blur-sm border border-purple-100">
-          <TabsTrigger 
+          <TabsTrigger
             value="friends"
             className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-blue-600 data-[state=active]:text-white"
           >
-            My Friends ({mockFriends.length})
+            My Friends ({friendsData.data?.length || 0})
           </TabsTrigger>
-          <TabsTrigger 
+          <TabsTrigger
             value="requests"
             className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-blue-600 data-[state=active]:text-white"
           >
-            Requests (2)
+            Requests ({friendRequestData.data?.length || 0})
           </TabsTrigger>
-          <TabsTrigger 
+          <TabsTrigger
             value="discover"
             className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-blue-600 data-[state=active]:text-white"
           >
@@ -97,7 +169,10 @@ const Friends: React.FC = () => {
         <TabsContent value="friends" className="space-y-4 mt-6">
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <Search
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              size={20}
+            />
             <Input
               placeholder="Search friends..."
               value={searchTerm}
@@ -108,31 +183,40 @@ const Friends: React.FC = () => {
 
           {/* Friends List */}
           <div className="grid gap-4">
-            {filteredFriends.map(friend => (
-              <Card key={friend.id} className="backdrop-blur-sm bg-white/80 border-purple-100">
+            {filteredFriends.map((friend) => (
+              <Card
+                key={friend.id}
+                className="backdrop-blur-sm bg-white/80 border-purple-100"
+              >
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                       <div className="relative">
-                        <img 
-                          src={friend.avatar} 
-                          alt={friend.name}
+                        <img
+                          src={friend.profile_picture}
+                          alt={friend.first_name + " " + friend.last_name}
                           className="w-12 h-12 rounded-full border-2 border-purple-200"
                         />
-                        <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
-                          friend.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
-                        }`}></div>
                       </div>
                       <div>
-                        <h3 className="font-semibold text-gray-900">{friend.name}</h3>
-                        <p className="text-sm text-gray-500">{friend.mutualFriends} mutual friends</p>
+                        <h3 className="font-semibold text-gray-900">
+                          {friend.first_name} {friend.last_name}
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          {friend.mutual_friends_count || 0} mutual friends
+                        </p>
                       </div>
                     </div>
-                    
-                    <Button 
-                      variant="outline" 
+
+                    <Button
+                      variant="outline"
                       size="sm"
-                      onClick={() => handleRemoveFriend(friend.id, friend.name)}
+                      onClick={() =>
+                        handleRemoveFriend(
+                          friend.id,
+                          `${friend.first_name} ${friend.last_name}`
+                        )
+                      }
                       className="text-red-600 hover:text-red-700 hover:bg-red-50"
                     >
                       <UserMinus size={16} className="mr-2" />
@@ -151,45 +235,75 @@ const Friends: React.FC = () => {
             <div>
               <h3 className="text-lg font-semibold mb-4">Received Requests</h3>
               <div className="space-y-4">
-                {mockFriendRequests.filter(req => req.type === 'received').map(request => (
-                  <Card key={request.id} className="backdrop-blur-sm bg-white/80 border-purple-100">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <img 
-                            src={request.avatar} 
-                            alt={request.name}
-                            className="w-12 h-12 rounded-full border-2 border-purple-200"
-                          />
-                          <div>
-                            <h3 className="font-semibold text-gray-900">{request.name}</h3>
-                            <p className="text-sm text-gray-500">{request.mutualFriends} mutual friends</p>
+                {friendRequestData.data?.length ? (
+                  friendRequestData.data
+                    .filter((req) => req.type === "received")
+                    .map((request) => (
+                      <Card
+                        key={request.id}
+                        className="backdrop-blur-sm bg-white/80 border-purple-100"
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-4">
+                              <img
+                                src={request.profile_picture}
+                                alt={
+                                  request.first_name + " " + request.last_name
+                                }
+                                className="w-12 h-12 rounded-full border-2 border-purple-200"
+                              />
+                              <div>
+                                <h3 className="font-semibold text-gray-900">
+                                  {request.first_name} {request.last_name}
+                                </h3>
+                                <p className="text-sm text-gray-500">
+                                  {request.mutual_friends_count || 0} mutual
+                                  friends
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex space-x-2">
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  handleAcceptRequest(
+                                    request.id,
+                                    request.first_name
+                                  )
+                                }
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                <Check size={16} className="mr-2" />
+                                Accept
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  handleRejectRequest(
+                                    request.id,
+                                    request.first_name
+                                  )
+                                }
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <X size={16} className="mr-2" />
+                                Decline
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                        
-                        <div className="flex space-x-2">
-                          <Button 
-                            size="sm"
-                            onClick={() => handleAcceptRequest(request.id, request.name)}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <Check size={16} className="mr-2" />
-                            Accept
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleRejectRequest(request.id, request.name)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <X size={16} className="mr-2" />
-                            Decline
-                          </Button>
-                        </div>
-                      </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                ) : (
+                  <Card className="backdrop-blur-sm bg-white/80 border-purple-100">
+                    <CardContent className="p-4 text-center">
+                      <p className="text-gray-500">No friend requests</p>
                     </CardContent>
                   </Card>
-                ))}
+                )}
               </div>
             </div>
 
@@ -197,34 +311,58 @@ const Friends: React.FC = () => {
             <div>
               <h3 className="text-lg font-semibold mb-4">Sent Requests</h3>
               <div className="space-y-4">
-                {mockFriendRequests.filter(req => req.type === 'sent').map(request => (
-                  <Card key={request.id} className="backdrop-blur-sm bg-white/80 border-purple-100">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <img 
-                            src={request.avatar} 
-                            alt={request.name}
-                            className="w-12 h-12 rounded-full border-2 border-purple-200"
-                          />
-                          <div>
-                            <h3 className="font-semibold text-gray-900">{request.name}</h3>
-                            <p className="text-sm text-gray-500">Request pending</p>
+                {friendRequestData.data?.length ? (
+                  friendRequestData.data
+                    .filter((req) => req.type === "sent")
+                    .map((request) => (
+                      <Card
+                        key={request.id}
+                        className="backdrop-blur-sm bg-white/80 border-purple-100"
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-4">
+                              <img
+                                src={request.profile_picture}
+                                alt={
+                                  request.first_name + " " + request.last_name
+                                }
+                                className="w-12 h-12 rounded-full border-2 border-purple-200"
+                              />
+                              <div>
+                                <h3 className="font-semibold text-gray-900">
+                                  {request.first_name} {request.last_name}
+                                </h3>
+                                <p className="text-sm text-gray-500">
+                                  Request pending
+                                </p>
+                              </div>
+                            </div>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                handleCancelRequest(
+                                  request.id,
+                                  request.first_name
+                                )
+                              }
+                              className="text-gray-600 hover:text-gray-700"
+                            >
+                              Cancel Request
+                            </Button>
                           </div>
-                        </div>
-                        
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleCancelRequest(request.id, request.name)}
-                          className="text-gray-600 hover:text-gray-700"
-                        >
-                          Cancel Request
-                        </Button>
-                      </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                ) : (
+                  <Card className="backdrop-blur-sm bg-white/80 border-purple-100">
+                    <CardContent className="p-4 text-center">
+                      <p className="text-gray-500">No sent requests</p>
                     </CardContent>
                   </Card>
-                ))}
+                )}
               </div>
             </div>
           </div>
@@ -233,33 +371,50 @@ const Friends: React.FC = () => {
         <TabsContent value="discover" className="space-y-4 mt-6">
           <div className="grid gap-4">
             {/* Mock suggested friends */}
-            {[1, 2, 3, 4].map(i => (
-              <Card key={i} className="backdrop-blur-sm bg-white/80 border-purple-100">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <img 
-                        src={`https://images.unsplash.com/photo-${1500648767791 + i}?w=150&h=150&fit=crop&crop=face`}
-                        alt={`Suggested ${i}`}
-                        className="w-12 h-12 rounded-full border-2 border-purple-200"
-                      />
-                      <div>
-                        <h3 className="font-semibold text-gray-900">Suggested Friend {i}</h3>
-                        <p className="text-sm text-gray-500">{Math.floor(Math.random() * 10) + 1} mutual friends</p>
+            {friendSuggestions.data?.length ? (
+              friendSuggestions.data.map((sug) => (
+                <Card
+                  key={sug.id}
+                  className="backdrop-blur-sm bg-white/80 border-purple-100"
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <img
+                          src={sug.profile_picture}
+                          alt={`${sug.first_name} ${sug.last_name}`}
+                          className="w-12 h-12 rounded-full border-2 border-purple-200"
+                        />
+                        <div>
+                          <h3 className="font-semibold text-gray-900">
+                            {sug.first_name} {sug.last_name}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            {sug.mutual_friends_count || 0} mutual friends
+                          </p>
+                        </div>
                       </div>
+
+                      <Button
+                        size="sm"
+                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                      >
+                        <UserPlus size={16} className="mr-2" />
+                        Add Friend
+                      </Button>
                     </div>
-                    
-                    <Button 
-                      size="sm"
-                      className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                    >
-                      <UserPlus size={16} className="mr-2" />
-                      Add Friend
-                    </Button>
-                  </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <Card className="backdrop-blur-sm bg-white/80 border-purple-100">
+                <CardContent className="p-4 text-center">
+                  <p className="text-gray-500">
+                    No friend suggestions available
+                  </p>
                 </CardContent>
               </Card>
-            ))}
+            )}
           </div>
         </TabsContent>
       </Tabs>
