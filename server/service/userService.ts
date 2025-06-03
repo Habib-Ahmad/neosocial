@@ -1,4 +1,4 @@
-import { session } from "../db/neo4j";
+import { driver, session } from "../db/neo4j";
 import { User } from "../models/User";
 
 export const createUser = async (user: User) => {
@@ -29,18 +29,31 @@ export const createUser = async (user: User) => {
   return createdUser;
 };
 
-export const getUserById = async (id: string) => {
+export const getUserByIdService = async (id: string) => {
   const result = await session.run(
     `
     MATCH (u:User {id: $id})
-    RETURN u
+    OPTIONAL MATCH (u)-[:FRIENDS_WITH]-(f:User)
+    OPTIONAL MATCH (u)-[:POSTED]->(p:Post)
+    RETURN u, count(DISTINCT f) AS friend_count, count(DISTINCT p) AS post_count
     `,
     { id }
   );
+
   if (result.records.length === 0) {
     return null;
   }
-  return result.records[0].get("u").properties;
+
+  const record = result.records[0];
+  const user = record.get("u").properties;
+  const friendCount = record.get("friend_count").toNumber();
+  const postCount = record.get("post_count").toNumber();
+
+  return {
+    ...user,
+    friend_count: friendCount,
+    post_count: postCount,
+  };
 };
 
 export const getUserByEmail = async (email: string) => {
@@ -106,6 +119,8 @@ export const acceptFriendRequestService = async (
   fromId: string,
   toId: string
 ): Promise<boolean> => {
+  const session = driver.session();
+
   const result = await session.run(
     `
     MATCH (from:User {id: $fromId})-[r:REQUESTED]->(to:User {id: $toId})
@@ -124,6 +139,8 @@ export const rejectFriendRequestService = async (
   fromId: string,
   toId: string
 ): Promise<boolean> => {
+  const session = driver.session();
+
   const result = await session.run(
     `
     MATCH (from:User {id: $fromId})-[r:REQUESTED]->(to:User {id: $toId})
@@ -140,6 +157,8 @@ export const cancelFriendRequestService = async (
   fromId: string,
   toId: string
 ): Promise<boolean> => {
+  const session = driver.session();
+
   const result = await session.run(
     `
     MATCH (from:User {id: $fromId})-[r:REQUESTED]->(to:User {id: $toId})
@@ -157,6 +176,8 @@ export const searchUsersService = async (
   limit: number = 20,
   offset: number = 0
 ) => {
+  const session = driver.session();
+
   const result = await session.run(
     `
     MATCH (u:User)
@@ -177,5 +198,30 @@ export const searchUsersService = async (
   return result.records.map((r) => {
     const { password_hash, ...user } = r.get("u").properties;
     return user;
+  });
+};
+
+export const getUserFriendsService = async (userId: string): Promise<any[]> => {
+  const session = driver.session();
+
+  const result = await session.run(
+    `
+    MATCH (u:User {id: $userId})-[:FRIENDS_WITH]-(friend:User)
+    RETURN friend
+    ORDER BY friend.first_name, friend.last_name
+    `,
+    { userId }
+  );
+
+  return result.records.map((record) => {
+    const friend = record.get("friend").properties;
+
+    return {
+      id: friend.id,
+      first_name: friend.first_name,
+      last_name: friend.last_name,
+      email: friend.email,
+      profile_picture: friend.profile_picture || "",
+    };
   });
 };

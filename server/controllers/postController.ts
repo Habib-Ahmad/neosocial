@@ -4,8 +4,10 @@ import {
   deletePostService,
   getAllPostsService,
   getPostByIdService,
+  getPostsByUserIdService,
   getUserFeedService,
   togglePostLikeService,
+  toggleCommentLikeService,
   updatePostService,
   createCommentForPostService,
   getCommentsForPostService,
@@ -20,11 +22,16 @@ export const createPost = async (req: Request, res: Response) => {
     }
 
     const payload = req.body;
-    const { content } = payload;
+    const { content, category } = payload;
 
-    if (!content) {
+    if (!content || content.trim() === "") {
       res.status(400);
       throw new Error("Post content is required");
+    }
+
+    if (!category || category.trim() === "") {
+      res.status(400);
+      throw new Error("Post category is required");
     }
 
     const post = await createPostService(userId, payload);
@@ -63,7 +70,12 @@ export const getUserFeed = async (req: Request, res: Response) => {
 
 export const getAllPosts = async (req: Request, res: Response) => {
   try {
-    const posts = await getAllPostsService();
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401);
+      throw new Error("Unauthorized: No token provided");
+    }
+    const posts = await getAllPostsService(userId);
 
     res.status(200).json({
       message: "Fetched all posts successfully",
@@ -76,10 +88,42 @@ export const getAllPosts = async (req: Request, res: Response) => {
   }
 };
 
+export const getPostsByUserId = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401);
+      throw new Error("Unauthorized: No token provided");
+    }
+
+    const targetUserId = req.params.id;
+    if (!targetUserId) {
+      res.status(400);
+      throw new Error("User ID is required");
+    }
+
+    const posts = await getPostsByUserIdService(targetUserId, userId);
+
+    res.status(200).json({
+      message: "Fetched user posts successfully",
+      posts,
+    });
+  } catch (err: any) {
+    console.error(err);
+    res.status(400);
+    throw new Error(err.message || "Failed to fetch user posts");
+  }
+};
+
 export const getPostById = async (req: Request, res: Response) => {
   try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401);
+      throw new Error("Unauthorized: No token provided");
+    }
     const postId = req.params.id;
-    const post = await getPostByIdService(postId);
+    const post = await getPostByIdService(postId, userId);
 
     if (!post || post.is_deleted) {
       res.status(404);
@@ -186,10 +230,39 @@ export const createCommentForPost = async (req: Request, res: Response): Promise
 export const getCommentsForPost = async (req: Request, res: Response) => {
   try {
     const postId = req.params.id;
-    const comments = await getCommentsForPostService(postId);
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401);
+      throw new Error("Unauthorized: No token provided");
+    }
+
+    const comments = await getCommentsForPostService(postId, userId);
     res.status(200).json({ message: "Comments fetched", comments });
   } catch (err: any) {
     console.error(err);
     res.status(500).json({ error: err.message || "Failed to fetch comments" });
+  }
+};
+
+export const toggleCommentLike = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const commentId = req.params.id;
+
+    if (!userId) {
+      res.status(401);
+      throw new Error("Unauthorized: No token provided");
+    }
+
+    const updatedComment = await togglePostLikeService(userId, commentId);
+
+    res.status(200).json({
+      message: "Comment updated successfully",
+      comment: updatedComment,
+    });
+  } catch (err: any) {
+    console.error(err);
+    res.status(400);
+    throw new Error(err.message || "Failed to update comment");
   }
 };

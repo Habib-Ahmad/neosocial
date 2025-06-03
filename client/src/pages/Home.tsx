@@ -1,0 +1,59 @@
+import React, { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import PostCard from "@/components/PostCard";
+import CreatePost from "@/components/CreatePost";
+import { useQuery } from "@tanstack/react-query";
+import { Post } from "@/interface/Post";
+import { getAllPosts } from "@/api/posts";
+
+const Home: React.FC = () => {
+  const [activeTab, setActiveTab] = useState("latest");
+
+  const { data, isError, isPending } = useQuery<Post[]>({
+    queryKey: ["posts"],
+    queryFn: () => getAllPosts(),
+  });
+
+  if (isPending) {
+    return <div className="text-center text-gray-500">Loading posts...</div>;
+  }
+  if (isError) {
+    return (
+      <div className="text-center text-red-500">
+        Error loading posts. Please try again later.
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-6">
+      {/* Create Post */}
+      <CreatePost />
+
+      {/* Post Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 bg-white/80 backdrop-blur-sm border border-purple-100">
+          <TabsTrigger
+            value="latest"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-blue-600 data-[state=active]:text-white"
+          >
+            Latest
+          </TabsTrigger>
+          <TabsTrigger
+            value="discover"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-blue-600 data-[state=active]:text-white"
+          >
+            Discover
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="latest" className="space-y-4 mt-6">
+          {data?.length &&
+            data.map((post) => <PostCard key={post.id} post={post} />)}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
+export default Home;
