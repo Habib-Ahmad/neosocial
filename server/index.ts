@@ -9,6 +9,7 @@ import { postRouter, userRouter, groupRouter, messagesRouter, notificationRouter
 import errorHandler from "./middleware/errorHandler";
 import { constants } from "./utils/constants";
 import { sendMessageService } from "./service/messagingService";
+import path from "path";
 
 dotenv.config();
 const app: Express = express();
@@ -61,6 +62,7 @@ app.use("/api/posts", postRouter);
 app.use("/api/groups", groupRouter);
 app.use("/api/messages", messagesRouter);
 app.use("/api/notifications", notificationRouter);
+app.use("/uploads/posts", express.static(path.join(process.cwd(), "uploads", "posts")));
 
 // 404 handler
 app.use((req: Request, res: Response, next: NextFunction) => {

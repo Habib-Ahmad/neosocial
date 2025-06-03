@@ -1,5 +1,7 @@
 import express from "express";
 import { validateToken } from "../middleware/validateToken";
+import { postUpload } from "../middleware/postUpload";
+
 import {
   createPost,
   deletePost,
@@ -16,7 +18,7 @@ import {
 
 const router = express.Router();
 
-router.post("/", validateToken, createPost);
+router.post("/", validateToken, postUpload.array("media"), createPost);
 router.get("/latest", validateToken, getLatestFeed);
 router.get("/discover", validateToken, getDiscoverFeed);
 router.get("/:id", validateToken, getPostById);

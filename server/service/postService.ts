@@ -33,14 +33,12 @@ export const createPostService = async (userId: string, body: any): Promise<Post
       now,
       content: body.content,
       category: body.category || "",
-      mediaUrls: [],
+      mediaUrls: body.mediaUrls || [],
     }
   );
 
   return result.records[0].get("p").properties;
 };
-
-
 
 export const createCommentForPostService = async (
   userId: string,
@@ -92,37 +90,6 @@ export const createCommentForPostService = async (
       email: u.email,
       profile_picture: u.profile_picture || "",
     },
-  };
-};
-export const togglePostLikeService = async (userId: string, commentId: string) => {
-  const session = driver.session();
-  const result = await session.run(
-    `
-    MATCH (u:User {id: $userId}), (c:Comment {id: $commentId})
-    OPTIONAL MATCH (u)-[r:LIKES]->(c)
-    WITH u, c, r, 
-        CASE WHEN r IS NOT NULL THEN true ELSE false END AS alreadyLiked
-    FOREACH (_ IN CASE WHEN alreadyLiked THEN [1] ELSE [] END |
-      DELETE r
-      SET c.likes_count = coalesce(c.likes_count, 1) - 1
-    )
-    FOREACH (_ IN CASE WHEN NOT alreadyLiked THEN [1] ELSE [] END |
-      CREATE (u)-[:LIKES]->(c)
-      SET c.likes_count = coalesce(c.likes_count, 0) + 1
-    )
-    RETURN c
-    `,
-    { userId, commentId }
-  );
-  const record = result.records[0];
-  const c = record.get("c").properties;
-  return {
-    id: c.id,
-    content: c.content,
-    likes_count: neo4j.integer.toNumber(c.likes_count),
-    is_deleted: c.is_deleted,
-    created_at: new Date(c.created_at.toString()).toISOString(),
-    updated_at: new Date(c.updated_at.toString()).toISOString(),
   };
 };
 
@@ -363,6 +330,7 @@ export const getPostByIdService = async (id: string, viewerId: string): Promise<
     reposts_count: toNumber(rawPost.reposts_count),
     created_at: timestampToDate(rawPost.created_at),
     updated_at: timestampToDate(rawPost.updated_at),
+    media_urls: rawPost.media_urls || [],
     liked_by_me: likedByMe,
     author: {
       id: rawUser.id,
@@ -382,7 +350,6 @@ export const getPostByIdService = async (id: string, viewerId: string): Promise<
       })),
   };
 };
-
 
 export const togglePostLikeService = async (userId: string, postId: string): Promise<Post> => {
   const session = driver.session();
