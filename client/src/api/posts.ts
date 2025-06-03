@@ -10,6 +10,15 @@ export const createPost = async (payload: PostPayload) => {
 export const getAllPosts = async () => {
 	const response = await axiosInstance.get(urls.posts.getAll);
 	return response.data.posts;
+  
+export const getLatestFeed = async () => {
+  const response = await axiosInstance.get(urls.posts.getLatestFeed);
+  return response.data.posts;
+};
+
+export const getDiscoverFeed = async () => {
+  const response = await axiosInstance.get(urls.posts.getDiscoverFeed);
+  return response.data.posts;
 };
 
 export const getPostsByUserId = async (userId: string) => {

@@ -51,25 +51,32 @@ export const sendFriendRequest = async (recipientId: string) => {
   return response.data;
 };
 
-export const acceptFriendRequest = async (requestId: string) => {
+export const acceptFriendRequest = async (senderId: string) => {
   const response = await axiosInstance.post(urls.auth.acceptFriendRequest, {
-    requestId,
+    senderId,
     action: "accept",
   });
   return response.data;
 };
 
-export const rejectFriendRequest = async (requestId: string) => {
+export const rejectFriendRequest = async (senderId: string) => {
   const response = await axiosInstance.post(urls.auth.rejectFriendRequest, {
-    requestId,
+    senderId,
     action: "reject",
   });
   return response.data;
 };
 
-export const cancelFriendRequest = async (requestId: string) => {
+export const cancelFriendRequest = async (receivingUserId: string) => {
   const response = await axiosInstance.post(urls.auth.cancelFriendRequest, {
-    requestId,
+    receivingUserId,
+  });
+  return response.data;
+};
+
+export const removeFriend = async (friendId: string) => {
+  const response = await axiosInstance.delete(urls.auth.removeFriend, {
+    data: { friendId },
   });
   return response.data;
 };
@@ -77,4 +84,14 @@ export const cancelFriendRequest = async (requestId: string) => {
 export const getUserFriends = async (userId: string) => {
   const response = await axiosInstance.get(urls.auth.getFriends(userId));
   return response.data.friends;
+};
+
+export const getFriendRequests = async () => {
+  const response = await axiosInstance.get(urls.auth.getFriendRequests);
+  return response.data.friendRequests;
+};
+
+export const getFriendSuggestions = async () => {
+  const response = await axiosInstance.get(urls.auth.suggestFriends);
+  return response.data.suggestions;
 };

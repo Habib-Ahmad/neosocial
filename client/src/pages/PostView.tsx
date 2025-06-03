@@ -337,6 +337,7 @@ const PostView: React.FC = () => {
 			</div>
 		</div>
 	);
+
 };
 
 export default PostView;

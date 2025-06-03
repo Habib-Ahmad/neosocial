@@ -56,7 +56,11 @@ const Login: React.FC = () => {
     try {
       const response = await loginUser(email, password);
 
-      const success = login(response.user, response.token);
+      const success = login(
+        response.user,
+        response.token,
+        response.tokenExpiry
+      );
       if (success) {
         toast({
           title: "Welcome back!",

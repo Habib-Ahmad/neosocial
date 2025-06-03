@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 
 interface AuthContextType {
   user: User | null;
-  login: (user: User, token: string) => boolean;
+  login: (user: User, token: string, tokenExpiry: string) => boolean;
   logout: () => void;
   updateProfile: (user: User) => void;
 }
@@ -39,16 +39,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
-  const login = (user: User, token: string) => {
+  const login = (user: User, token: string, tokenExpiry: string) => {
     setUser(user);
     localStorage.setItem("user", JSON.stringify(user));
     localStorage.setItem("token", token);
+    localStorage.setItem("tokenExpiry", tokenExpiry);
     return true;
   };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem("user");
+    localStorage.removeItem("token");
+    localStorage.removeItem("tokenExpiry");
   };
 
   const updateProfile = (user: User) => {

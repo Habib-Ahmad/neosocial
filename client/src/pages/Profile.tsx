@@ -7,10 +7,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Edit, Calendar, Users, FileText } from "lucide-react";
 import PostCard from "@/components/PostCard";
 import { User } from "@/interface/User";
-import { useQuery } from "@tanstack/react-query";
-import { getUserById, getUserFriends } from "@/api/auth";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getUserById, getUserFriends, sendFriendRequest } from "@/api/auth";
 import { Post } from "@/interface/Post";
 import { getPostsByUserId } from "@/api/posts";
+import { useToast } from "@/hooks/use-toast";
 
 function extractSignupDate(user: User): Date {
   const { created_at } = user;
@@ -28,6 +29,8 @@ function extractSignupDate(user: User): Date {
 const Profile: React.FC = () => {
   const { userId } = useParams();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const userData = useQuery<User>({
     queryKey: [`user/${userId || user?.id}`],
@@ -45,6 +48,23 @@ const Profile: React.FC = () => {
     queryKey: [`userFriends/${userId || user?.id}`],
     queryFn: () => getUserFriends(userId || user?.id || ""),
     enabled: !!userId || !!user?.id,
+  });
+
+  const { mutateAsync: sendRequest } = useMutation({
+    mutationFn: () => {
+      const res = sendFriendRequest(userId);
+      toast({
+        title: "Friend Request Sent",
+        description: "Your friend request has been sent successfully.",
+      });
+      return res;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [`friendRequests/${userId || user?.id}`],
+        exact: true,
+      });
+    },
   });
 
   // If no userId in params, show current user's profile
@@ -98,10 +118,7 @@ const Profile: React.FC = () => {
               {/* Avatar */}
               <div className="relative">
                 <img
-                  src={
-                    profileUser.profile_picture ||
-                    "https://preview.redd.it/milr969373561.jpg?width=640&crop=smart&auto=webp&s=0489105bbefd3decd68950da2334507dc25490fe"
-                  }
+                  src={profileUser.profile_picture}
                   alt={profileUser.first_name}
                   className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white shadow-lg"
                 />
@@ -145,7 +162,10 @@ const Profile: React.FC = () => {
                     </Button>
                   </Link>
                 ) : (
-                  <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+                  <Button
+                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                    onClick={() => sendRequest()}
+                  >
                     Add Friend
                   </Button>
                 )}
@@ -232,9 +252,7 @@ const Profile: React.FC = () => {
                 {friendsData.data?.map((user) => (
                   <div key={user.id} className="text-center">
                     <img
-                      src={`https://images.unsplash.com/photo-${
-                        1472099645785 + user.id
-                      }?w=100&h=100&fit=crop&crop=face`}
+                      src={user.profile_picture}
                       alt={`Friend ${user.first_name}`}
                       className="w-16 h-16 rounded-full mx-auto mb-2 border-2 border-purple-200"
                     />

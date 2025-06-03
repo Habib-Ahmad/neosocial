@@ -3,11 +3,14 @@ import {
   acceptFriendRequestService,
   cancelFriendRequestService,
   createUser,
+  getFriendRequestsService,
   getUserByEmail,
   getUserByIdService,
   getUserFriendsService,
   rejectFriendRequestService,
+  removeFriendService,
   sendFriendRequestService,
+  suggestFriendsService,
   updateUser,
   searchUsersService,
 } from "../service/userService";
@@ -153,7 +156,7 @@ export const getUserById = async (req: Request, res: Response) => {
     res.status(200).json({ message: "User fetched successfully", user: userResponse });
   } catch (error: any) {
     console.error("Get user by ID error:", error);
-    res.status(500);
+    res.status(400);
     throw new Error("Internal server error while fetching user by ID");
   }
 };
@@ -264,9 +267,9 @@ export const sendFriendRequest = async (req: Request, res: Response) => {
 export const handleFriendRequest = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
-    const { requestId, action } = req.body;
+    const { senderId, action } = req.body;
 
-    if (!userId || !requestId || !action) {
+    if (!userId || !senderId || !action) {
       res.status(400);
       throw new Error("Invalid request");
     }
@@ -277,7 +280,7 @@ export const handleFriendRequest = async (req: Request, res: Response) => {
     }
 
     if (action === "accept") {
-      const success = await acceptFriendRequestService(userId, requestId);
+      const success = await acceptFriendRequestService(senderId, userId);
       if (!success) {
         throw new Error("Failed to accept friend request or request not found");
       }
@@ -285,7 +288,7 @@ export const handleFriendRequest = async (req: Request, res: Response) => {
     }
 
     if (action === "reject") {
-      const success = await rejectFriendRequestService(userId, requestId);
+      const success = await rejectFriendRequestService(senderId, userId);
       if (!success) {
         throw new Error("Failed to reject friend request or request not found");
       }
@@ -301,12 +304,14 @@ export const handleFriendRequest = async (req: Request, res: Response) => {
 export const cancelFriendRequest = async (req: Request, res: Response) => {
   try {
     const fromId = req.user?.id;
-    const toId = req.body.id;
+    const toId = req.body.receivingUserId;
 
     if (!fromId || !toId || fromId === toId) {
       res.status(400);
       throw new Error("Invalid request");
     }
+
+    console.log({ fromId, toId });
 
     const success = await cancelFriendRequestService(fromId, toId);
     if (!success) {
@@ -356,7 +361,70 @@ export const getUserFriends = async (req: Request, res: Response) => {
     res.status(200).json({ message: "Friends fetched successfully", friends });
   } catch (error: any) {
     console.error("Get user friends error:", error);
-    res.status(500);
+    res.status(400);
     throw new Error("Internal server error while fetching user friends");
+  }
+};
+
+export const getUserFriendRequests = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401);
+      throw new Error("User not authenticated");
+    }
+
+    const friendRequests = await getFriendRequestsService(userId);
+    if (!friendRequests) {
+      res.status(404);
+      throw new Error("No friend requests found");
+    }
+
+    res.status(200).json({ message: "Friend requests fetched successfully", friendRequests });
+  } catch (error: any) {
+    console.error("Get user friend requests error:", error);
+    res.status(500);
+    throw new Error("Internal server error while fetching friend requests");
+  }
+};
+
+export const removeFriend = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const { friendId } = req.body;
+
+    if (!userId || !friendId || userId === friendId) {
+      res.status(400);
+      throw new Error("Invalid request");
+    }
+
+    const success = await removeFriendService(userId, friendId);
+    if (!success) {
+      throw new Error("Failed to remove friend or not friends");
+    }
+
+    res.status(200).json({ message: "Friend removed successfully" });
+  } catch (error: any) {
+    console.error("Remove friend error:", error);
+    res.status(400);
+    throw new Error(error.message || "Error removing friend");
+  }
+};
+
+export const suggestFriends = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401);
+      throw new Error("User not authenticated");
+    }
+
+    const suggestions = await suggestFriendsService(userId);
+
+    res.status(200).json({ message: "Suggested friends fetched successfully", suggestions });
+  } catch (error: any) {
+    console.error("Suggest friends error:", error);
+    res.status(500);
+    throw new Error("Internal server error while fetching suggested friends");
   }
 };
