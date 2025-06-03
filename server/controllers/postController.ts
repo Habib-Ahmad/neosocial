@@ -7,7 +7,10 @@ import {
   getPostsByUserIdService,
   getDiscoverFeedService,
   togglePostLikeService,
+  toggleCommentLikeService,
   updatePostService,
+  createCommentForPostService,
+  getCommentsForPostService,
 } from "../service/postService";
 
 export const createPost = async (req: Request, res: Response) => {
@@ -203,5 +206,63 @@ export const deletePost = async (req: Request, res: Response) => {
     console.error("Error deleting post:", err);
     res.status(400);
     throw new Error(err.message || "Failed to delete post");
+  }
+};
+export const createCommentForPost = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    const postId = req.params.id;
+    const { content } = req.body;
+
+    if (!userId || !content) {
+      res.status(400).json({ error: "Missing user or content" });
+      return;
+    }
+
+    const comment = await createCommentForPostService(userId, postId, content);
+    res.status(201).json({ message: "Comment created", comment });
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ error: err.message || "Failed to create comment" });
+  }
+};
+
+export const getCommentsForPost = async (req: Request, res: Response) => {
+  try {
+    const postId = req.params.id;
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401);
+      throw new Error("Unauthorized: No token provided");
+    }
+
+    const comments = await getCommentsForPostService(postId, userId);
+    res.status(200).json({ message: "Comments fetched", comments });
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ error: err.message || "Failed to fetch comments" });
+  }
+};
+
+export const toggleCommentLike = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const commentId = req.params.id;
+
+    if (!userId) {
+      res.status(401);
+      throw new Error("Unauthorized: No token provided");
+    }
+
+    const updatedComment = await togglePostLikeService(userId, commentId);
+
+    res.status(200).json({
+      message: "Comment updated successfully",
+      comment: updatedComment,
+    });
+  } catch (err: any) {
+    console.error(err);
+    res.status(400);
+    throw new Error(err.message || "Failed to update comment");
   }
 };

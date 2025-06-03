@@ -2,6 +2,7 @@ import { driver } from "../db/neo4j";
 import { v4 as uuidv4 } from "uuid";
 import { Post } from "../models/Post";
 import { timestampToDate, toNumber } from "../utils/neo4j";
+import neo4j from "neo4j-driver";
 
 export const createPostService = async (userId: string, body: any): Promise<Post> => {
   const postId = uuidv4();
@@ -37,6 +38,123 @@ export const createPostService = async (userId: string, body: any): Promise<Post
   );
 
   return result.records[0].get("p").properties;
+};
+
+
+
+export const createCommentForPostService = async (
+  userId: string,
+  postId: string,
+  content: string
+) => {
+  const commentId = `comment-${uuidv4()}`;
+  const timestamp = new Date().toISOString();
+  const session = driver.session();
+
+  const result = await session.run(
+    `
+    MATCH (u:User {id: $userId}), (p:Post {id: $postId})
+    CREATE (c:Comment {
+      id: $commentId,
+      content: $content,
+      created_at: datetime($timestamp),
+      updated_at: datetime($timestamp),
+      likes_count: 0,
+      is_deleted: false
+    })
+    CREATE (u)-[:COMMENTED {commented_at: datetime($timestamp)}]->(c)
+    CREATE (p)-[:HAS_COMMENT]->(c)
+    RETURN c, u
+    `,
+    {
+      userId,
+      postId,
+      content,
+      commentId,
+      timestamp,
+    }
+  );
+
+  const record = result.records[0];
+  const c = record.get("c").properties;
+  const u = record.get("u").properties;
+
+  return {
+    id: c.id,
+    content: c.content,
+    created_at: new Date(c.created_at.toString()).toISOString(),
+    updated_at: new Date(c.updated_at.toString()).toISOString(),
+    likes_count: neo4j.integer.toNumber(c.likes_count),
+    is_deleted: c.is_deleted,
+    author: {
+      id: u.id,
+      name: `${u.first_name} ${u.last_name}`,
+      email: u.email,
+      profile_picture: u.profile_picture || "",
+    },
+  };
+};
+export const togglePostLikeService = async (userId: string, commentId: string) => {
+  const session = driver.session();
+  const result = await session.run(
+    `
+    MATCH (u:User {id: $userId}), (c:Comment {id: $commentId})
+    OPTIONAL MATCH (u)-[r:LIKES]->(c)
+    WITH u, c, r, 
+        CASE WHEN r IS NOT NULL THEN true ELSE false END AS alreadyLiked
+    FOREACH (_ IN CASE WHEN alreadyLiked THEN [1] ELSE [] END |
+      DELETE r
+      SET c.likes_count = coalesce(c.likes_count, 1) - 1
+    )
+    FOREACH (_ IN CASE WHEN NOT alreadyLiked THEN [1] ELSE [] END |
+      CREATE (u)-[:LIKES]->(c)
+      SET c.likes_count = coalesce(c.likes_count, 0) + 1
+    )
+    RETURN c
+    `,
+    { userId, commentId }
+  );
+  const record = result.records[0];
+  const c = record.get("c").properties;
+  return {
+    id: c.id,
+    content: c.content,
+    likes_count: neo4j.integer.toNumber(c.likes_count),
+    is_deleted: c.is_deleted,
+    created_at: new Date(c.created_at.toString()).toISOString(),
+    updated_at: new Date(c.updated_at.toString()).toISOString(),
+  };
+};
+
+export const getCommentsForPostService = async (postId: string, userId: string) => {
+  const session = driver.session();
+
+  const result = await session.run(
+    `
+    MATCH (p:Post {id: $postId})-[:HAS_COMMENT]->(c:Comment)
+    OPTIONAL MATCH (u:User {id: $userId})-[:LIKES]->(c)
+    WHERE c.is_deleted = false
+    RETURN c, COUNT(u) > 0 AS liked
+    ORDER BY c.created_at ASC
+    `,
+    { postId, userId }
+  );
+
+  await session.close();
+
+  return result.records.map((record) => {
+    const c = record.get("c").properties;
+
+    return {
+      id: c.id,
+      content: c.content,
+      likes_count: neo4j.integer.toNumber(c.likes_count),
+      is_deleted: c.is_deleted,
+      created_at: timestampToDate(c.created_at),
+      updated_at: timestampToDate(c.updated_at),
+      liked_by_user: record.get("liked"),
+    };
+  });
 };
 
 export const getDiscoverFeedService = async (userId: string): Promise<Post[]> => {
@@ -191,20 +309,33 @@ export const getPostsByUserIdService = async (userId: string, viewerId: string):
     };
   });
 };
-
 export const getPostByIdService = async (id: string, viewerId: string): Promise<Post | null> => {
   const session = driver.session();
+
   const result = await session.run(
     `
     MATCH (u:User)-[:POSTED]->(p:Post {id: $id})
+    WHERE p.is_deleted = false
+
     OPTIONAL MATCH (p)-[:HAS_COMMENT]->(c:Comment)<-[:COMMENTED]-(cu:User)
-    OPTIONAL MATCH (viewer:User {id: $viewerId})
-    WITH p, u, c, cu, viewer, EXISTS((viewer)-[:LIKED]->(p)) AS liked_by_me
+    OPTIONAL MATCH (v:User {id: $viewerId})
+    OPTIONAL MATCH (v)-[:LIKES]->(p)
+    OPTIONAL MATCH (v)-[l:LIKES]->(c)
+
+    WITH p, u, c, cu, v,
+         v IS NOT NULL AND (v)-[:LIKES]->(p) AS liked_by_me,
+         l IS NOT NULL AS liked_by_user
+
+    WHERE c IS NULL OR c.is_deleted = false
+
+
     RETURN p, u, liked_by_me,
       collect({
         id: c.id,
         content: c.content,
         created_at: c.created_at,
+        likes_count: c.likes_count,
+        liked_by_user: liked_by_user,
         author: {
           id: cu.id,
           name: cu.first_name + ' ' + cu.last_name,
@@ -245,10 +376,13 @@ export const getPostByIdService = async (id: string, viewerId: string): Promise<
         id: c.id,
         content: c.content,
         created_at: timestampToDate(c.created_at),
+        likes_count: toNumber(c.likes_count ?? 0),
+        liked_by_user: c.liked_by_user ?? false,
         author: c.author,
       })),
   };
 };
+
 
 export const togglePostLikeService = async (userId: string, postId: string): Promise<Post> => {
   const session = driver.session();
@@ -336,4 +470,37 @@ export const deletePostService = async (userId: string, postId: string): Promise
   );
 
   return result.records.length > 0;
+};
+export const toggleCommentLikeService = async (userId: string, commentId: string) => {
+  const session = driver.session();
+  const result = await session.run(
+    `
+    MATCH (u:User {id: $userId}), (c:Comment {id: $commentId})
+    OPTIONAL MATCH (u)-[r:LIKES]->(c)
+    WITH u, c, r, 
+        CASE WHEN r IS NOT NULL THEN true ELSE false END AS alreadyLiked
+    FOREACH (_ IN CASE WHEN alreadyLiked THEN [1] ELSE [] END |
+      DELETE r
+      SET c.likes_count = coalesce(c.likes_count, 1) - 1
+    )
+    FOREACH (_ IN CASE WHEN NOT alreadyLiked THEN [1] ELSE [] END |
+      CREATE (u)-[:LIKES]->(c)
+      SET c.likes_count = coalesce(c.likes_count, 0) + 1
+    )
+    RETURN c
+    `,
+    { userId, commentId }
+  );
+
+  const record = result.records[0];
+  const c = record.get("c").properties;
+
+  return {
+    id: c.id,
+    content: c.content,
+    likes_count: neo4j.integer.toNumber(c.likes_count),
+    is_deleted: c.is_deleted,
+    created_at: new Date(c.created_at.toString()).toISOString(),
+    updated_at: new Date(c.updated_at.toString()).toISOString(),
+  };
 };

@@ -12,6 +12,7 @@ import {
   sendFriendRequestService,
   suggestFriendsService,
   updateUser,
+  searchUsersService,
 } from "../service/userService";
 import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
@@ -325,6 +326,24 @@ export const cancelFriendRequest = async (req: Request, res: Response) => {
   }
 };
 
+export const searchUsers = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const query = req.query.q?.toString() || "";
+    const status = req.query.status?.toString() || null;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    if (!query || query.trim().length < 2) {
+      res.status(400).json({ error: "Search query must be at least 2 characters" });
+      return;
+    }
+
+    const users = await searchUsersService(query, status, limit, offset);
+    res.status(200).json({ users });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Failed to search users" });
+  }
+};
 export const getUserFriends = async (req: Request, res: Response) => {
   try {
     const userId = req.params.id;

@@ -9,6 +9,9 @@ import {
   getDiscoverFeed,
   togglePostLike,
   updatePost,
+  getCommentsForPost,
+  createCommentForPost,
+  toggleCommentLike,
 } from "../controllers/postController";
 
 const router = express.Router();
@@ -21,5 +24,8 @@ router.get("/user/:id", validateToken, getPostsByUserId);
 router.patch("/:id/like", validateToken, togglePostLike);
 router.patch("/:id", validateToken, updatePost);
 router.delete("/:id", validateToken, deletePost);
+router.post("/:id/comments", validateToken, createCommentForPost);
+router.get("/:id/comments", validateToken, getCommentsForPost);
+router.patch("/:id/comments/like", validateToken, toggleCommentLike);
 
 export default router;

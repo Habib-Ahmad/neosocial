@@ -1,4 +1,5 @@
 export const urls = {
+
   auth: {
     register: "/users",
     login: "/users/login",
@@ -17,6 +18,7 @@ export const urls = {
   },
   posts: {
     create: "/posts",
+   	getAll: '/posts',
     getLatestFeed: "/posts/latest",
     getDiscoverFeed: "/posts/discover",
     getByUserId: (userId: string) => `/posts/user/${userId}`,
@@ -24,5 +26,8 @@ export const urls = {
     update: (id: string) => `/posts/${id}`,
     delete: (id: string) => `/posts/${id}`,
     toggleLike: (id: string) => `/posts/${id}/like`,
+    toggleCommentLike: (commentId: string) =>
+			`posts/${commentId}/comments/like`,
+		createComment: (postId: string) => `/posts/${postId}/comments`,
   },
 };

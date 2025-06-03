@@ -12,6 +12,7 @@ import {
   sendFriendRequest,
   suggestFriends,
   updateUserProfile,
+  searchUsers,
 } from "../controllers/userController";
 import { validateToken } from "../middleware/validateToken";
 
@@ -26,6 +27,7 @@ router.post("/friend-request", validateToken, sendFriendRequest);
 router.post("/friend-request/accept", validateToken, handleFriendRequest);
 router.post("/friend-request/reject", validateToken, handleFriendRequest);
 router.post("/friend-request/cancel", validateToken, cancelFriendRequest);
+router.get("/search", validateToken, searchUsers);
 router.delete("/friends/remove", validateToken, removeFriend);
 router.get("/friend-requests", validateToken, getUserFriendRequests);
 router.get("/friends/:id", validateToken, getUserFriends);

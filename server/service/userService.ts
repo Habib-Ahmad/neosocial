@@ -1,4 +1,5 @@
-import { driver } from "../db/neo4j";
+import { driver, session } from "../db/neo4j";
+
 import { User } from "../models/User";
 
 export const createUser = async (user: User) => {
@@ -126,6 +127,7 @@ export const acceptFriendRequestService = async (
   toId: string
 ): Promise<boolean> => {
   const session = driver.session();
+
   const result = await session.run(
     `
     MATCH (from:User {id: $fromId})-[r:SENT_FRIEND_REQUEST]->(to:User {id: $toId})
@@ -145,6 +147,7 @@ export const rejectFriendRequestService = async (
   toId: string
 ): Promise<boolean> => {
   const session = driver.session();
+
   const result = await session.run(
     `
     MATCH (from:User {id: $fromId})-[r:SENT_FRIEND_REQUEST]->(to:User {id: $toId})
@@ -162,6 +165,7 @@ export const cancelFriendRequestService = async (
   toId: string
 ): Promise<boolean> => {
   const session = driver.session();
+
   const result = await session.run(
     `
     MATCH (from:User {id: $fromId})-[r:SENT_FRIEND_REQUEST]->(to:User {id: $toId})
@@ -173,9 +177,40 @@ export const cancelFriendRequestService = async (
 
   return result.records.length > 0;
 };
+export const searchUsersService = async (
+  query: string,
+  status: string | null = null,
+  limit: number = 20,
+  offset: number = 0
+) => {
+  const session = driver.session();
+
+  const result = await session.run(
+    `
+    MATCH (u:User)
+    WHERE (
+      toLower(u.username) CONTAINS toLower($query) OR
+      toLower(u.first_name) CONTAINS toLower($query) OR
+      toLower(u.last_name) CONTAINS toLower($query) OR
+      toLower(u.email) CONTAINS toLower($query)
+    )
+    AND ($status IS NULL OR u.status = $status)
+    RETURN u
+    ORDER BY u.last_active DESC
+    SKIP $offset LIMIT $limit
+    `,
+    { query, status, limit: Number(limit), offset: Number(offset) }
+  );
+
+  return result.records.map((r) => {
+    const { password_hash, ...user } = r.get("u").properties;
+    return user;
+  });
+};
 
 export const getUserFriendsService = async (userId: string): Promise<any[]> => {
   const session = driver.session();
+
   const result = await session.run(
     `
     MATCH (u:User {id: $userId})-[:FRIENDS_WITH]-(friend:User)
