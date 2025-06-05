@@ -14,8 +14,10 @@ import { Image, Send, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createPost } from '@/api/posts';
-
-const CreatePost: React.FC = () => {
+interface CreatePostProps {
+	groupId?: string;
+}
+const CreatePost: React.FC<CreatePostProps> = ({ groupId }) => {
 	const [content, setContent] = useState('');
 	const [category, setCategory] = useState('');
 	const [isPosting, setIsPosting] = useState(false);
@@ -93,9 +95,10 @@ const CreatePost: React.FC = () => {
 		const formData = new FormData();
 		formData.append('content', content);
 		formData.append('category', category);
-		previewFiles.forEach((item) => formData.append('media', item.file)); // "media" must match multer field name
+		if (groupId) formData.append('groupId', groupId);
+		previewFiles.forEach((item) => formData.append('media', item.file));
 
-		await mutateAsync(formData); // change API to accept FormData
+		await mutateAsync(formData);
 	};
 	return (
 		<Card className="backdrop-blur-sm bg-white/80 border-purple-100 shadow-lg">
@@ -103,7 +106,7 @@ const CreatePost: React.FC = () => {
 				<div className="flex items-center space-x-3">
 					{user?.profile_picture && (
 						<img
-							src={user.profile_picture}
+							src={`http://localhost:5000${user.profile_picture}`}
 							alt={user.first_name}
 							className="w-10 h-10 rounded-full border-2 border-purple-200"
 						/>

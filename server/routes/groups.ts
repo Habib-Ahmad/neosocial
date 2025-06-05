@@ -9,10 +9,10 @@ import {
   searchGroups,
   createGroupPost,
 } from "../controllers/groupController";
+import { groupUpload } from "../middleware/groupUpload";
 
 const router = express.Router();
-
-router.post("/", validateToken, createGroup);
+router.post("/", validateToken, groupUpload.single("cover_image"), createGroup);
 router.get("/:id/members", validateToken, getGroupMembers);
 router.post("/:id/join", validateToken, submitJoinRequest);
 router.get("/:id/requests", validateToken, getPendingRequests);

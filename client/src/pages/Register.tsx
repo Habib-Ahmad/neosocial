@@ -23,6 +23,7 @@ const Register: React.FC = () => {
 		password: '',
 		confirmPassword: '',
 	});
+	const [profilePicture, setProfilePicture] = useState<File | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
@@ -33,26 +34,19 @@ const Register: React.FC = () => {
 	const validateForm = () => {
 		const newErrors: { [key: string]: string } = {};
 
-		if (!formData.firstName.trim()) {
+		if (!formData.firstName.trim())
 			newErrors.firstName = 'First name is required';
-		}
-
-		if (!formData.lastName.trim()) {
-			newErrors.lastName = 'Last name is required';
-		}
-
+		if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
 		if (!formData.email) {
 			newErrors.email = 'Email is required';
 		} else if (!/\S+@\S+\.\S+/.test(formData.email)) {
 			newErrors.email = 'Email is invalid';
 		}
-
 		if (!formData.password) {
 			newErrors.password = 'Password is required';
 		} else if (formData.password.length < 6) {
 			newErrors.password = 'Password must be at least 6 characters';
 		}
-
 		if (formData.password !== formData.confirmPassword) {
 			newErrors.confirmPassword = 'Passwords do not match';
 		}
@@ -70,16 +64,20 @@ const Register: React.FC = () => {
 		e.preventDefault();
 
 		if (!validateForm()) return;
-
 		setIsLoading(true);
 
 		try {
-			const response = await registerUser({
-				first_name: formData.firstName,
-				last_name: formData.lastName,
-				email: formData.email,
-				password: formData.password,
-			});
+			const form = new FormData();
+			form.append('first_name', formData.firstName);
+			form.append('last_name', formData.lastName);
+			form.append('email', formData.email);
+			form.append('password', formData.password);
+
+			if (profilePicture) {
+				form.append('profile_picture', profilePicture);
+			}
+
+			const response = await registerUser(form); // <-- FormData here
 
 			const success = login(
 				response.user,
@@ -127,7 +125,7 @@ const Register: React.FC = () => {
 									name="firstName"
 									value={formData.firstName}
 									onChange={handleInputChange}
-									className={`${errors.firstName ? 'border-red-500' : ''}`}
+									className={errors.firstName ? 'border-red-500' : ''}
 									placeholder="John"
 								/>
 								{errors.firstName && (
@@ -142,13 +140,25 @@ const Register: React.FC = () => {
 									name="lastName"
 									value={formData.lastName}
 									onChange={handleInputChange}
-									className={`${errors.lastName ? 'border-red-500' : ''}`}
+									className={errors.lastName ? 'border-red-500' : ''}
 									placeholder="Doe"
 								/>
 								{errors.lastName && (
 									<p className="text-sm text-red-500">{errors.lastName}</p>
 								)}
 							</div>
+						</div>
+
+						{/* Profile Picture Upload */}
+						<div className="space-y-2">
+							<Label htmlFor="profilePicture">Profile Picture</Label>
+							<Input
+								id="profilePicture"
+								name="profilePicture"
+								type="file"
+								accept="image/*"
+								onChange={(e) => setProfilePicture(e.target.files?.[0] || null)}
+							/>
 						</div>
 
 						<div className="space-y-2">
@@ -159,7 +169,7 @@ const Register: React.FC = () => {
 								type="email"
 								value={formData.email}
 								onChange={handleInputChange}
-								className={`${errors.email ? 'border-red-500' : ''}`}
+								className={errors.email ? 'border-red-500' : ''}
 								placeholder="john@example.com"
 							/>
 							{errors.email && (
@@ -175,7 +185,7 @@ const Register: React.FC = () => {
 								type="password"
 								value={formData.password}
 								onChange={handleInputChange}
-								className={`${errors.password ? 'border-red-500' : ''}`}
+								className={errors.password ? 'border-red-500' : ''}
 								placeholder="Enter your password"
 							/>
 							{errors.password && (
@@ -191,7 +201,7 @@ const Register: React.FC = () => {
 								type="password"
 								value={formData.confirmPassword}
 								onChange={handleInputChange}
-								className={`${errors.confirmPassword ? 'border-red-500' : ''}`}
+								className={errors.confirmPassword ? 'border-red-500' : ''}
 								placeholder="Confirm your password"
 							/>
 							{errors.confirmPassword && (

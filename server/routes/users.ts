@@ -13,12 +13,14 @@ import {
   suggestFriends,
   updateUserProfile,
   searchUsers,
+  getUserGroups,
 } from "../controllers/userController";
 import { validateToken } from "../middleware/validateToken";
+import { userUpload } from "../middleware/userUpload";
 
 const router = express.Router();
 
-router.post("/", registerUser);
+router.post("/", userUpload.single("profile_picture"), registerUser);
 router.post("/login", login);
 router.post("/logout", logout);
 router.patch("/update", validateToken, updateUserProfile);
@@ -33,5 +35,6 @@ router.get("/friend-requests", validateToken, getUserFriendRequests);
 router.get("/friends/:id", validateToken, getUserFriends);
 router.get("/friend-suggestions", validateToken, suggestFriends);
 router.get("/:id", validateToken, getUserById);
+router.get("/me/groups", validateToken, getUserGroups);
 
 export default router;

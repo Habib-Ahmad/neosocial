@@ -6,6 +6,15 @@ export const createGroupService = async (creatorId: string, groupData: any) => {
   const groupId = `group-${uuidv4()}`;
   const now = new Date().toISOString();
 
+  const {
+    name,
+    description,
+    privacy,
+    category,
+    rules = "", // default empty string if undefined
+    cover_image = null, // null if not provided
+  } = groupData;
+
   const result = await session.run(
     `
     MATCH (u:User {id: $creatorId})
@@ -18,7 +27,6 @@ export const createGroupService = async (creatorId: string, groupData: any) => {
       cover_image: $cover_image,
       created_at: datetime($now),
       member_count: 1,
-      max_members: $max_members,
       rules: $rules,
       is_active: true
     })
@@ -31,7 +39,12 @@ export const createGroupService = async (creatorId: string, groupData: any) => {
       creatorId,
       groupId,
       now,
-      ...groupData,
+      name,
+      description,
+      privacy,
+      category,
+      cover_image,
+      rules,
     }
   );
 

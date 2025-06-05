@@ -66,7 +66,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 				<div className="flex items-center justify-between">
 					<div className="flex items-center space-x-3">
 						<img
-							src={post.author.profile_picture}
+							src={`http://localhost:5000${post.author.profile_picture}`}
 							alt={post.author.name}
 							className="w-10 h-10 rounded-full border-2 border-purple-200"
 						/>

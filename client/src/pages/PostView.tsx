@@ -8,7 +8,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { Post } from '@/interface/Post';
-import { getPostById, createComment, toggleCommentLike } from '@/api/posts';
+import {
+	getPostById,
+	createComment,
+	toggleCommentLike,
+	togglePostLike,
+} from '@/api/posts';
 
 const PostView: React.FC = () => {
 	const { postId } = useParams();
@@ -81,13 +86,18 @@ const PostView: React.FC = () => {
 		}
 	};
 
-	const handleLike = () => {
-		setIsLiked(!isLiked);
-		setLikesCount((prev) => (isLiked ? prev - 1 : prev + 1));
-		toast({
-			title: isLiked ? 'Post unliked' : 'Post liked',
-			description: isLiked ? 'Removed from your likes' : 'Added to your likes',
-		});
+	const handleLike = async () => {
+		try {
+			const updatedPost = await togglePostLike(post.id);
+			setIsLiked(updatedPost.liked_by_me);
+			setLikesCount(updatedPost.likes_count);
+		} catch {
+			toast({
+				title: 'Error',
+				description: 'Failed to toggle like.',
+				variant: 'destructive',
+			});
+		}
 	};
 
 	const handleSave = () => {
@@ -148,7 +158,7 @@ const PostView: React.FC = () => {
 						<div className="flex items-center space-x-3">
 							<img
 								src={
-									post.author.profile_picture ||
+									`http://localhost:5000${user.profile_picture}` ||
 									'https://via.placeholder.com/150'
 								}
 								alt={post.author.name}
@@ -199,14 +209,17 @@ const PostView: React.FC = () => {
 									variant="ghost"
 									size="sm"
 									onClick={handleLike}
-									className={`flex items-center space-x-2 transition-colors ${
-										isLiked
-											? 'text-red-500 hover:text-red-600'
-											: 'text-gray-500 hover:text-red-500'
-									}`}
+									className="flex items-center space-x-2 transition-colors"
 								>
-									<Heart size={20} className={isLiked ? 'fill-current' : ''} />
-									<span>{likesCount}</span>
+									<Heart
+										size={20}
+										className={`transition-all ${
+											isLiked ? 'fill-red-500 text-red-500' : 'text-gray-500'
+										}`}
+									/>
+									<span className={isLiked ? 'text-red-500' : 'text-gray-500'}>
+										{likesCount}
+									</span>
 								</Button>
 								<div className="flex items-center space-x-2 text-gray-500 px-3 py-2">
 									<MessageSquare size={20} />
@@ -235,7 +248,7 @@ const PostView: React.FC = () => {
 							<div className="flex space-x-3">
 								{user?.profile_picture && (
 									<img
-										src={user.profile_picture}
+										src={`http://localhost:5000${user.profile_picture}`}
 										alt={user.first_name}
 										className="w-10 h-10 rounded-full border-2 border-purple-200"
 									/>
@@ -274,9 +287,7 @@ const PostView: React.FC = () => {
 							<CardContent className="p-4">
 								<div className="flex space-x-3">
 									<img
-										src={
-											'https://preview.redd.it/milr969373561.jpg?width=640&crop=smart&auto=webp&s=0489105bbefd3decd68950da2334507dc25490fe'
-										}
+										src={`http://localhost:5000${comment.author.profile_picture}`}
 										className="w-10 h-10 rounded-full border-2 border-purple-200"
 									/>
 									<div className="flex-1">
