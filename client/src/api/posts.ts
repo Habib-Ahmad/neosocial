@@ -2,23 +2,28 @@ import { PostPayload } from '@/interface/Post';
 import { axiosInstance } from '.';
 import { urls } from './urls';
 
-export const createPost = async (payload: PostPayload) => {
-	const response = await axiosInstance.post(urls.posts.create, payload);
+export const createPost = async (formData: FormData) => {
+	const response = await axiosInstance.post(urls.posts.create, formData, {
+		headers: {
+			'Content-Type': 'multipart/form-data',
+		},
+	});
 	return response.data;
 };
 
 export const getAllPosts = async () => {
 	const response = await axiosInstance.get(urls.posts.getAll);
 	return response.data.posts;
-  
+};
+
 export const getLatestFeed = async () => {
-  const response = await axiosInstance.get(urls.posts.getLatestFeed);
-  return response.data.posts;
+	const response = await axiosInstance.get(urls.posts.getLatestFeed);
+	return response.data.posts;
 };
 
 export const getDiscoverFeed = async () => {
-  const response = await axiosInstance.get(urls.posts.getDiscoverFeed);
-  return response.data.posts;
+	const response = await axiosInstance.get(urls.posts.getDiscoverFeed);
+	return response.data.posts;
 };
 
 export const getPostsByUserId = async (userId: string) => {

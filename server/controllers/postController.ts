@@ -13,37 +13,33 @@ import {
   getCommentsForPostService,
 } from "../service/postService";
 
-export const createPost = async (req: Request, res: Response) => {
+export const createPost = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
     if (!userId) {
-      res.status(401);
-      throw new Error("Unauthorized: No token provided");
+      res.status(401).json({ message: "Unauthorized" });
+      return;
     }
 
-    const payload = req.body;
-    const { content, category } = payload;
-
-    if (!content || content.trim() === "") {
-      res.status(400);
-      throw new Error("Post content is required");
+    const { content, category } = req.body;
+    if (!content?.trim() || !category?.trim()) {
+      res.status(400).json({ message: "Content and category required" });
+      return;
     }
 
-    if (!category || category.trim() === "") {
-      res.status(400);
-      throw new Error("Post category is required");
-    }
+    const files = req.files as Express.Multer.File[];
+    const mediaUrls = files?.map((file) => `/uploads/posts/${file.filename}`) || [];
 
-    const post = await createPostService(userId, payload);
-
-    res.status(201).json({
-      message: "Post created successfully",
-      post,
+    const post = await createPostService(userId, {
+      content,
+      category,
+      mediaUrls,
     });
+
+    res.status(201).json({ message: "Post created successfully", post });
   } catch (err: any) {
     console.error(err);
-    res.status(400);
-    throw new Error(err.message || "Failed to create post");
+    res.status(500).json({ message: err.message || "Failed to create post" });
   }
 };
 
@@ -254,7 +250,7 @@ export const toggleCommentLike = async (req: Request, res: Response) => {
       throw new Error("Unauthorized: No token provided");
     }
 
-    const updatedComment = await togglePostLikeService(userId, commentId);
+    const updatedComment = await toggleCommentLikeService(userId, commentId);
 
     res.status(200).json({
       message: "Comment updated successfully",

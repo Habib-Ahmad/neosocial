@@ -1,9 +1,9 @@
 import { driver, session } from "../db/neo4j";
-
+import neo4j from "neo4j-driver";
 import { User } from "../models/User";
-
 export const createUser = async (user: User) => {
   const session = driver.session();
+
   const result = await session.run(
     `
     CREATE (u:User {
@@ -12,6 +12,7 @@ export const createUser = async (user: User) => {
       password_hash: $password_hash,
       first_name: $first_name,
       last_name: $last_name,
+      profile_picture: $profile_picture,
       created_at: datetime(),
       status: $status
     })
@@ -23,6 +24,7 @@ export const createUser = async (user: User) => {
       password_hash: user.password,
       first_name: user.first_name,
       last_name: user.last_name,
+      profile_picture: user.profile_picture || "", // Default to empty if undefined
       status: "active",
     }
   );
@@ -31,31 +33,41 @@ export const createUser = async (user: User) => {
   return createdUser;
 };
 
-export const getUserByIdService = async (id: string) => {
+export const getUserByIdService = async (id: string, currentUserId?: string) => {
   const session = driver.session();
   const result = await session.run(
     `
     MATCH (u:User {id: $id})
     OPTIONAL MATCH (u)-[:FRIENDS_WITH]-(f:User)
     OPTIONAL MATCH (u)-[:POSTED]->(p:Post)
-    RETURN u, count(DISTINCT f) AS friend_count, count(DISTINCT p) AS post_count
+
+    OPTIONAL MATCH (me:User {id: $currentUserId})
+    OPTIONAL MATCH (me)-[fr:FRIENDS_WITH]-(u)
+    OPTIONAL MATCH (me)-[sent:SENT_FRIEND_REQUEST]->(u)
+    OPTIONAL MATCH (u)-[received:SENT_FRIEND_REQUEST]->(me)
+
+    RETURN u,
+           count(DISTINCT f) AS friend_count,
+           count(DISTINCT p) AS post_count,
+           fr IS NOT NULL AS is_friend,
+           sent IS NOT NULL AS sent_request,
+           received IS NOT NULL AS received_request
     `,
-    { id }
+    { id, currentUserId }
   );
 
-  if (result.records.length === 0) {
-    return null;
-  }
+  if (result.records.length === 0) return null;
 
   const record = result.records[0];
   const user = record.get("u").properties;
-  const friendCount = record.get("friend_count").toNumber();
-  const postCount = record.get("post_count").toNumber();
 
   return {
     ...user,
-    friend_count: friendCount,
-    post_count: postCount,
+    friend_count: record.get("friend_count").toNumber(),
+    post_count: record.get("post_count").toNumber(),
+    is_friend: record.get("is_friend"),
+    sent_request: record.get("sent_request"),
+    received_request: record.get("received_request"),
   };
 };
 
@@ -181,7 +193,8 @@ export const searchUsersService = async (
   query: string,
   status: string | null = null,
   limit: number = 20,
-  offset: number = 0
+  offset: number = 0,
+  currentUserId: string
 ) => {
   const session = driver.session();
 
@@ -194,17 +207,31 @@ export const searchUsersService = async (
       toLower(u.last_name) CONTAINS toLower($query) OR
       toLower(u.email) CONTAINS toLower($query)
     )
+    AND u.id <> $currentUserId
     AND ($status IS NULL OR u.status = $status)
-    RETURN u
+
+    OPTIONAL MATCH (u)-[:FRIENDS_WITH]-(mutual:User)-[:FRIENDS_WITH]-(me:User {id: $currentUserId})
+    WHERE mutual.id <> u.id AND mutual.id <> $currentUserId
+
+    RETURN u, count(DISTINCT mutual) AS mutual_friends_count
     ORDER BY u.last_active DESC
     SKIP $offset LIMIT $limit
     `,
-    { query, status, limit: Number(limit), offset: Number(offset) }
+    {
+      query,
+      currentUserId,
+      status,
+      limit: neo4j.int(limit),
+      offset: neo4j.int(offset),
+    }
   );
 
   return result.records.map((r) => {
     const { password_hash, ...user } = r.get("u").properties;
-    return user;
+    return {
+      ...user,
+      mutual_friends_count: r.get("mutual_friends_count").toInt(),
+    };
   });
 };
 
@@ -308,41 +335,88 @@ export const removeFriendService = async (userId: string, friendId: string): Pro
   }
 };
 
-export const suggestFriendsService = async (userId: string): Promise<any[]> => {
+export const suggestFriendsService = async (userId: string, limit: number = 20): Promise<any[]> => {
   const session = driver.session();
 
   try {
+    // Step 1: Get suggested users (friends of friends not already friends or requested)
     const result = await session.run(
       `
-      MATCH (u:User {id: $userId})-[:FRIENDS_WITH]->(:User)-[:FRIENDS_WITH]->(suggested:User)
-      WHERE NOT (u)-[:FRIENDS_WITH]-(suggested)
-        AND NOT (u)-[:REQUESTED]->(suggested)
-        AND NOT (suggested)-[:REQUESTED]->(u)
-        AND u.id <> suggested.id
-        AND suggested.privacy_level = 'public'
-      
-      WITH suggested, count(*) AS mutual_friends
-      RETURN suggested, mutual_friends
-      ORDER BY mutual_friends DESC
-      LIMIT 20
+      MATCH (u:User {id: $userId})
+      MATCH (u)-[:FRIENDS_WITH]->(:User)-[:FRIENDS_WITH]->(s:User)
+      WHERE NOT (u)-[:FRIENDS_WITH]-(s)
+        AND NOT (u)-[:SENT_FRIEND_REQUEST]->(s)
+        AND NOT (s)-[:SENT_FRIEND_REQUEST]->(u)
+        AND s.id <> $userId
+      OPTIONAL MATCH (u)-[:FRIENDS_WITH]-(mutual:User)-[:FRIENDS_WITH]-(s)
+      WITH s, count(DISTINCT mutual) AS mutualCount
+      RETURN s, mutualCount
+      ORDER BY mutualCount DESC
+      LIMIT $limit
       `,
-      { userId }
+      { userId, limit: neo4j.int(limit) }
     );
 
-    return result.records.map((record) => {
-      const user = record.get("suggested").properties;
-      const mutualFriends = record.get("mutual_friends").toNumber();
-
+    const suggestions = result.records.map((record) => {
+      const user = record.get("s").properties;
       return {
         id: user.id,
         first_name: user.first_name,
         last_name: user.last_name,
         email: user.email,
         profile_picture: user.profile_picture || "",
-        mutual_friends: mutualFriends,
+        mutual_friends_count: record.get("mutualCount").toInt(),
       };
     });
+
+    // Step 2: If fewer than limit, fill with random users not friends/requested
+    if (suggestions.length < limit) {
+      const fillerResult = await session.run(
+        `
+        MATCH (s:User)
+        WHERE s.id <> $userId
+          AND NOT (s)-[:FRIENDS_WITH]-(:User {id: $userId})
+          AND NOT (s)<-[:SENT_FRIEND_REQUEST]-(:User {id: $userId})
+          AND NOT (s)-[:SENT_FRIEND_REQUEST]->(:User {id: $userId})
+        RETURN s
+        ORDER BY rand()
+        LIMIT $fill
+        `,
+        {
+          userId,
+          fill: neo4j.int(limit - suggestions.length),
+        }
+      );
+
+      const filler = fillerResult.records.map((r) => {
+        const user = r.get("s").properties;
+        return {
+          id: user.id,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          email: user.email,
+          profile_picture: user.profile_picture || "",
+          mutual_friends_count: 0,
+        };
+      });
+
+      return [...suggestions, ...filler];
+    }
+
+    return suggestions;
   } finally {
     await session.close();
   }
+};
+export const getUserGroupsService = async (userId: string) => {
+  const result = await session.run(
+    `
+    MATCH (u:User {id: $userId})-[:MEMBER_OF]->(g:Group)
+    RETURN g ORDER BY g.created_at DESC
+    `,
+    { userId }
+  );
+
+  const groups = result.records.map((record) => record.get("g").properties);
+  return groups;
 };

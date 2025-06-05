@@ -8,17 +8,36 @@ import {
   createGroupPostService,
 } from "../service/groupService";
 
-export const createGroup = async (req: Request, res: Response) => {
+export const createGroup = async (req: Request, res: Response): Promise<void> => {
   try {
     const creatorId = req.user?.id;
     if (!creatorId) {
-      res.status(401).json({ error: "Unauthorized: No token provided" });
+      res.status(401).json({ message: "Unauthorized: No token provided" });
       return;
     }
-    const group = await createGroupService(creatorId, req.body);
+
+    const { name, description, privacy, category, rules } = req.body;
+
+    if (!name?.trim() || !description?.trim() || !category?.trim()) {
+      res.status(400).json({ message: "Name, description, and category are required" });
+      return;
+    }
+
+    const cover_image = req.file ? `/uploads/groups/${req.file.filename}` : null;
+
+    const group = await createGroupService(creatorId, {
+      name,
+      description,
+      privacy,
+      category,
+      rules,
+      cover_image,
+    });
+
     res.status(201).json({ message: "Group created successfully", group });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    console.error("Create Group Error:", error);
+    res.status(500).json({ message: error.message || "Failed to create group" });
   }
 };
 
