@@ -13,10 +13,12 @@ import {
 import { Image, Send, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createPost } from '@/api/posts';
+import { createPost, createGroupPost } from '@/api/posts';
+
 interface CreatePostProps {
 	groupId?: string;
 }
+
 const CreatePost: React.FC<CreatePostProps> = ({ groupId }) => {
 	const [content, setContent] = useState('');
 	const [category, setCategory] = useState('');
@@ -30,7 +32,12 @@ const CreatePost: React.FC<CreatePostProps> = ({ groupId }) => {
 	const queryClient = useQueryClient();
 
 	const { mutateAsync } = useMutation({
-		mutationFn: createPost,
+		mutationFn: async (formData: FormData) => {
+			if (groupId) {
+				return await createGroupPost(groupId, formData);
+			}
+			return await createPost(formData);
+		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['posts'], exact: true });
 			toast({
@@ -53,7 +60,6 @@ const CreatePost: React.FC<CreatePostProps> = ({ groupId }) => {
 	});
 
 	useEffect(() => {
-		// Cleanup object URLs on unmount
 		return () => {
 			previewFiles.forEach((p) => URL.revokeObjectURL(p.url));
 		};
@@ -95,11 +101,11 @@ const CreatePost: React.FC<CreatePostProps> = ({ groupId }) => {
 		const formData = new FormData();
 		formData.append('content', content);
 		formData.append('category', category);
-		if (groupId) formData.append('groupId', groupId);
 		previewFiles.forEach((item) => formData.append('media', item.file));
 
 		await mutateAsync(formData);
 	};
+
 	return (
 		<Card className="backdrop-blur-sm bg-white/80 border-purple-100 shadow-lg">
 			<CardHeader className="pb-3">

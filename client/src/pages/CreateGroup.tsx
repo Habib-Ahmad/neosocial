@@ -19,7 +19,6 @@ const CreateGroup: React.FC = () => {
 	const [formData, setFormData] = useState({
 		name: '',
 		description: '',
-		privacy: 'public',
 		category: '',
 		rules: '',
 	});
@@ -58,7 +57,6 @@ const CreateGroup: React.FC = () => {
 			const form = new FormData();
 			form.append('name', formData.name);
 			form.append('description', formData.description);
-			form.append('privacy', formData.privacy);
 			form.append('category', formData.category);
 			form.append('rules', formData.rules);
 			if (coverImage) {
@@ -128,21 +126,6 @@ const CreateGroup: React.FC = () => {
 							{errors.description && (
 								<p className="text-sm text-red-500">{errors.description}</p>
 							)}
-						</div>
-
-						{/* Privacy */}
-						<div className="space-y-2">
-							<Label htmlFor="privacy">Privacy</Label>
-							<select
-								id="privacy"
-								name="privacy"
-								value={formData.privacy}
-								onChange={handleInputChange}
-								className="w-full bg-white text-gray-800 border border-purple-200 rounded-md px-4 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-400 transition duration-150"
-							>
-								<option value="public">Public</option>
-								<option value="private">Private</option>
-							</select>
 						</div>
 
 						{/* Category */}

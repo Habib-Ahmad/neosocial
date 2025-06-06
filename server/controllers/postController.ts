@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import {
   createPostService,
+  createGroupPostService,
   deletePostService,
   getLatestFeedService,
   getPostByIdService,
@@ -12,7 +13,37 @@ import {
   createCommentForPostService,
   getCommentsForPostService,
 } from "../service/postService";
+export const createGroupPost = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    const groupId = req.params.groupId;
 
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const { content, category } = req.body;
+    if (!content?.trim() || !category?.trim()) {
+      res.status(400).json({ message: "Content and category required" });
+      return;
+    }
+
+    const files = req.files as Express.Multer.File[];
+    const mediaUrls = files?.map((file) => `/uploads/posts/${file.filename}`) || [];
+
+    const post = await createGroupPostService(userId, groupId, {
+      content,
+      category,
+      mediaUrls,
+    });
+
+    res.status(201).json({ message: "Group post created successfully", post });
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ message: err.message || "Failed to create group post" });
+  }
+};
 export const createPost = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;

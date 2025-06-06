@@ -16,6 +16,7 @@ import Layout from './components/Layout';
 import Groups from './pages/Groups';
 import CreateGroup from './pages/CreateGroup';
 import GroupView from './pages/GroupView';
+import EditGroup from './pages/EditGroup';
 
 const queryClient = new QueryClient();
 
@@ -84,6 +85,7 @@ const App = () => (
 								</ProtectedRoute>
 							}
 						/>
+						Route
 						<Route
 							path="/post/:postId"
 							element={
@@ -150,6 +152,16 @@ const App = () => (
 								<ProtectedRoute>
 									<Layout>
 										<CreateGroup />
+									</Layout>
+								</ProtectedRoute>
+							}
+						/>
+						<Route
+							path="/edit-group/:groupId"
+							element={
+								<ProtectedRoute>
+									<Layout>
+										<EditGroup />
 									</Layout>
 								</ProtectedRoute>
 							}

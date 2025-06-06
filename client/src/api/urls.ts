@@ -1,3 +1,4 @@
+import { get } from 'http';
 import { searchUsers } from './auth';
 
 export const urls = {
@@ -16,6 +17,7 @@ export const urls = {
 		cancelFriendRequest: '/users/friend-request/cancel',
 		removeFriend: '/users/friends/remove',
 		suggestFriends: '/users/friend-suggestions',
+
 		searchUsers: (query: string) =>
 			`/users/search?query=${encodeURIComponent(query)}`,
 	},
@@ -32,17 +34,27 @@ export const urls = {
 		toggleCommentLike: (commentId: string) =>
 			`posts/${commentId}/comments/like`,
 		createComment: (postId: string) => `/posts/${postId}/comments`,
+		createGroupPost: (groupId: string) => `/posts/${groupId}`,
 	},
 	groups: {
 		create: '/groups',
 		getMembers: (groupId: string) => `/groups/${groupId}/members`,
 		join: (groupId: string) => `/groups/${groupId}/join`,
-		getPendingRequests: (groupId: string) => `/groups/${groupId}/requests`,
+		getSentRequests: () => `/groups/sent-requests`,
+		getReceivedRequests: () => `/groups/received-requests`,
+		acceptJoinRequest: (requestId: string) => `/groups/${requestId}/accept`,
+		rejectJoinRequest: (requestId: string) => `/groups/${requestId}/reject`,
+		cancelJoinRequest: (requestId: string) => `/groups/${requestId}/cancel`,
 		reviewJoinRequest: (groupId: string, requestId: string) =>
 			`/groups/${groupId}/requests/${requestId}`,
 		search: (query: string) =>
 			`/groups/search?query=${encodeURIComponent(query)}`,
-		createGroupPost: (groupId: string) => `/groups/${groupId}/posts`,
 		getUserGroups: '/users/me/groups',
+		getGroupById: (groupId: string) => `/groups/${groupId}`,
+		leave: (groupId: string) => `/groups/${groupId}/leave`,
+		suggestGroups: '/groups/suggest',
+		removeMember: (groupId: string, memberId: string) =>
+			`/groups/${groupId}/remove/${memberId}`,
+		updateGroup: (groupId: string) => `/groups/${groupId}`, // <-- Add this line for update group
 	},
 };

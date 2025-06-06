@@ -8,9 +8,21 @@ export const createPost = async (formData: FormData) => {
 			'Content-Type': 'multipart/form-data',
 		},
 	});
-	return response.data;
+	return response.data.post;
 };
 
+export const createGroupPost = async (groupId: string, formData: FormData) => {
+	const response = await axiosInstance.post(
+		urls.posts.createGroupPost(groupId), // ✅ use URL builder
+		formData,
+		{
+			headers: {
+				'Content-Type': 'multipart/form-data',
+			},
+		}
+	);
+	return response.data.post;
+};
 export const getAllPosts = async () => {
 	const response = await axiosInstance.get(urls.posts.getAll);
 	return response.data.posts;

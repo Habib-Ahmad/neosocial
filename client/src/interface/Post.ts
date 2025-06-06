@@ -13,6 +13,7 @@ export interface Post extends PostPayload {
 	reposts_count: number;
 	location: string;
 	liked_by_me: boolean;
+	group_name: string;
 	media_urls: string[];
 	author: {
 		id: string;
