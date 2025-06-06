@@ -3,9 +3,17 @@ import {
   createGroupService,
   getGroupMembersService,
   submitJoinRequestService,
-  getPendingRequestsService,
-  reviewJoinRequestService,
-  createGroupPostService,
+  acceptJoinRequestService,
+  rejectJoinRequestService,
+  cancelJoinRequestService,
+  getGroupDetailsService,
+  getReceivedJoinRequestService,
+  getSentJoinRequestService,
+  leaveGroupService,
+  searchGroupsService,
+  suggestGroupsService,
+  removeMemberService,
+  updateGroupService,
 } from "../service/groupService";
 
 export const createGroup = async (req: Request, res: Response): Promise<void> => {
@@ -16,7 +24,7 @@ export const createGroup = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const { name, description, privacy, category, rules } = req.body;
+    const { name, description, category, rules } = req.body;
 
     if (!name?.trim() || !description?.trim() || !category?.trim()) {
       res.status(400).json({ message: "Name, description, and category are required" });
@@ -28,7 +36,6 @@ export const createGroup = async (req: Request, res: Response): Promise<void> =>
     const group = await createGroupService(creatorId, {
       name,
       description,
-      privacy,
       category,
       rules,
       cover_image,
@@ -55,100 +62,226 @@ export const submitJoinRequest = async (req: Request, res: Response): Promise<vo
   try {
     const userId = req.user?.id;
     const groupId = req.params.id;
-    const { message } = req.body;
 
     if (!userId) {
       res.status(401).json({ error: "Unauthorized: No user ID found" });
       return;
     }
 
-    const result = await submitJoinRequestService(userId, groupId, message);
+    const result = await submitJoinRequestService(userId, groupId);
 
-    if (result.autoJoined) {
-      res.status(201).json({
-        message: "User added directly to public group",
-        group: result.group,
-      });
-    } else {
-      res.status(201).json({
-        message: "Join request submitted",
-        request: result.request,
-      });
-    }
+    res.status(201).json({
+      message: "Join request submitted",
+      request: result.request,
+    });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    console.error("Join Group Error:", error);
+    res.status(400).json({ error: error.message || "Failed to join group" });
   }
 };
-
-export const getPendingRequests = async (req: Request, res: Response) => {
+export const cancelJoinRequest = async (req: Request, res: Response): Promise<void> => {
   try {
-    const groupId = req.params.id;
-    const requests = await getPendingRequestsService(groupId);
-    res.status(200).json({ message: "Pending requests fetched", requests });
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
-  }
-};
-
-export const reviewJoinRequest = async (req: Request, res: Response) => {
-  try {
-    const reviewerId = req.user?.id;
-    const { decision } = req.body;
+    const userId = req.user?.id;
     const requestId = req.params.requestId;
 
-    if (!["approved", "rejected"].includes(decision)) {
-      res.status(400).json({ error: "Invalid decision" });
-      return;
-    }
-    if (!reviewerId) {
-      res.status(401).json({ error: "Unauthorized: No user ID found" });
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
       return;
     }
 
-    const result = await reviewJoinRequestService(reviewerId, requestId, decision);
-    res.status(200).json({ message: `Request ${decision}`, result });
+    await cancelJoinRequestService(userId, requestId);
+
+    res.status(200).json({ message: "Join request cancelled" });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }
 };
-import { searchGroupsService } from "../service/groupService";
+export const getSentJoinRequests = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const requests = await getSentJoinRequestService(userId);
+    res.status(200).json({ message: "Sent requests fetched", requests });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+export const getReceivedJoinRequests = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const requests = await getReceivedJoinRequestService(userId);
+    res.status(200).json({ message: "Received requests fetched", requests });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
 
 export const searchGroups = async (req: Request, res: Response): Promise<void> => {
   try {
-    const query = req.query.q?.toString() || "";
-    const privacy = req.query.privacy?.toString() || null;
-    const isActive = req.query.is_active !== undefined ? req.query.is_active === "true" : null;
-    const limit = parseInt(req.query.limit as string) || 20;
-    const offset = parseInt(req.query.offset as string) || 0;
+    const query = req.query.query?.toString() || "";
 
     if (query.trim().length < 2) {
       res.status(400).json({ error: "Search query must be at least 2 characters long" });
       return;
     }
 
-    const groups = await searchGroupsService(query, privacy, isActive, limit, offset);
+    const groups = await searchGroupsService(query);
     res.status(200).json({ message: "Groups fetched", groups });
   } catch (error: any) {
     res.status(500).json({ error: error.message || "Failed to search groups" });
   }
 };
+// ✅ Accept request
+export const acceptJoinRequest = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const reviewerId = req.user?.id;
+    const requestId = req.params.requestId;
 
-export const createGroupPost = async (req: Request, res: Response): Promise<void> => {
+    if (!reviewerId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const group = await acceptJoinRequestService(reviewerId, requestId);
+
+    res.status(200).json({ message: "Join request approved", group });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// ❌ Reject request
+export const rejectJoinRequest = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const reviewerId = req.user?.id;
+    const requestId = req.params.requestId;
+
+    if (!reviewerId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const group = await rejectJoinRequestService(reviewerId, requestId);
+
+    res.status(200).json({ message: "Join request rejected", group });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const suggestGroups = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const groups = await suggestGroupsService(userId);
+
+    res.status(200).json({
+      message: "Suggested groups fetched",
+      groups,
+    });
+  } catch (error: any) {
+    console.error("Suggest Groups Error:", error);
+    res.status(500).json({
+      error: error.message || "Failed to fetch suggested groups",
+    });
+  }
+};
+
+export const removeMember = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { groupId, memberId } = req.params;
+    const adminId = req.user?.id;
+
+    if (!adminId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    await removeMemberService(groupId, memberId, adminId);
+    res.status(200).json({ message: "Member removed successfully" });
+  } catch (err: any) {
+    res.status(400).json({ message: err.message || "Failed to remove member" });
+  }
+};
+
+export const getGroupDetails = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const groupId = req.params.id;
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const details = await getGroupDetailsService(groupId, userId);
+    res.status(200).json(details);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message || "Failed to fetch group" });
+  }
+};
+
+export const leaveGroup = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
     const groupId = req.params.id;
-    const { content } = req.body;
 
-    if (!userId || !content) {
-      res.status(400).json({ error: "Missing user ID or content" });
-    }
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized: No user ID found" });
+      res.status(401).json({ message: "Unauthorized" });
       return;
     }
-    const post = await createGroupPostService(userId, groupId, content);
-    res.status(201).json({ message: "Post created in group", post });
+
+    const updatedGroup = await leaveGroupService(userId, groupId);
+
+    res.status(200).json({ message: "Left group successfully", group: updatedGroup });
   } catch (error: any) {
+    console.error("Leave Group Error:", error);
     res.status(400).json({ error: error.message });
+  }
+};
+export const updateGroup = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { groupId } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const updates = req.body;
+
+    if (!updates || Object.keys(updates).length === 0) {
+      res.status(400).json({ message: "No updates provided" });
+      return;
+    }
+
+    // Call the service to update the group
+    const updatedGroup = await updateGroupService(groupId, userId, updates);
+
+    if (!updatedGroup) {
+      res.status(404).json({ message: "Group not found" });
+      return;
+    }
+
+    res.status(200).json({ message: "Group updated successfully", group: updatedGroup });
+  } catch (error: any) {
+    console.error("Update group error:", error);
+    res
+      .status(500)
+      .json({ message: error.message || "Internal server error while updating group" });
   }
 };

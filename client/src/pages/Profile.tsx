@@ -21,15 +21,13 @@ import { useToast } from "@/hooks/use-toast";
 import { IMG_BASE_URL } from "@/api";
 
 function extractSignupDate(user: User): Date {
-  const { created_at } = user;
-
-  const year = created_at.year.low;
-  const month = created_at.month.low - 1;
-  const day = created_at.day.low;
-  const hour = created_at.hour.low;
-  const minute = created_at.minute.low;
-  const second = created_at.second.low;
-
+	const { created_at } = user;
+	const year = created_at.year.low;
+	const month = created_at.month.low - 1;
+	const day = created_at.day.low;
+	const hour = created_at.hour.low;
+	const minute = created_at.minute.low;
+	const second = created_at.second.low;
   return new Date(Date.UTC(year, month, day, hour, minute, second));
 }
 
@@ -39,77 +37,85 @@ const Profile: React.FC = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const userData = useQuery<User>({
-    queryKey: [`user/${userId || user?.id}`],
-    queryFn: () => getUserById(userId || user?.id || "", user?.id || ""),
-    enabled: !!userId || !!user?.id,
-  });
+	// Fetch user data
+	const userData = useQuery<User>({
+		queryKey: [`user/${userId || user?.id}`],
+		queryFn: () => getUserById(userId || user?.id || '', user?.id || ''),
+		enabled: !!userId || !!user?.id,
+	});
 
-  const userPosts = useQuery<Post[]>({
-    queryKey: [`userPosts/${userId || user?.id}`],
-    queryFn: () => getPostsByUserId(userId || user?.id || ""),
-    enabled: !!userId || !!user?.id,
-  });
+	// Fetch posts by user
+	const userPosts = useQuery<Post[]>({
+		queryKey: [`userPosts/${userId || user?.id}`],
+		queryFn: () => getPostsByUserId(userId || user?.id || ''),
+		enabled: !!userId || !!user?.id,
+	});
 
-  const friendsData = useQuery<User[]>({
-    queryKey: [`userFriends/${userId || user?.id}`],
-    queryFn: () => getUserFriends(userId || user?.id || ""),
-    enabled: !!userId || !!user?.id,
-  });
+	// Fetch friends data
+	const friendsData = useQuery<User[]>({
+		queryKey: [`userFriends/${userId || user?.id}`],
+		queryFn: () => getUserFriends(userId || user?.id || ''),
+		enabled: !!userId || !!user?.id,
+	});
 
-  const { mutateAsync: sendRequest } = useMutation({
-    mutationFn: () => sendFriendRequest(userId || ""),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [`friendRequests/${user?.id}`], // still good to refresh friend requests
-        exact: true,
-      });
-      queryClient.invalidateQueries({
-        queryKey: [`user/${userId || user?.id}`], // 🔁 refetch profile user data
-        exact: true,
-      });
-      toast({
-        title: "Friend Request Sent",
-        description: "Your friend request has been sent successfully.",
-      });
-    },
-  });
-  const { mutateAsync: cancelRequest } = useMutation({
-    mutationFn: cancelFriendRequest,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [`friendRequests/${user?.id}`],
-        exact: true,
-      });
-    },
-  });
+	// Handle sending a friend request
+	const { mutateAsync: sendRequest } = useMutation({
+		mutationFn: () => sendFriendRequest(userId || ''),
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: [`friendRequests/${user?.id}`],
+				exact: true,
+			});
+			queryClient.invalidateQueries({
+				queryKey: [`user/${userId || user?.id}`],
+				exact: true,
+			});
+			toast({
+				title: 'Friend Request Sent',
+				description: 'Your friend request has been sent successfully.',
+			});
+		},
+	});
 
-  const { mutateAsync: remove } = useMutation({
-    mutationFn: removeFriend,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [`userFriends/${user?.id}`],
-        exact: true,
-      });
-    },
-  });
-  // If no userId in params, show current user's profile
-  const isOwnProfile = !userId || userId === user?.id;
-  const profileUser = userData.data;
+	// Handle canceling a friend request
+	const { mutateAsync: cancelRequest } = useMutation({
+		mutationFn: cancelFriendRequest,
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: [`friendRequests/${user?.id}`],
+				exact: true,
+			});
+		},
+	});
+
+	// Handle removing a friend
+	const { mutateAsync: remove } = useMutation({
+		mutationFn: removeFriend,
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: [`userFriends/${user?.id}`],
+				exact: true,
+			});
+		},
+	});
+
+	// Check if the current user is viewing their own profile
+	const isOwnProfile = !userId || userId === user?.id;
+	const profileUser = userData.data;
 
   const joinDate = new Date(
     profileUser?.created_at?.second?.low * 1000 || Date.now()
   ).toISOString();
 
-  if (userData.isLoading || userPosts.isLoading || friendsData.isLoading) {
-    return (
-      <div className="max-w-4xl mx-auto">
-        <Card className="text-center p-8">
-          <p className="text-gray-500">Loading profile...</p>
-        </Card>
-      </div>
-    );
-  }
+	if (userData.isLoading || userPosts.isLoading || friendsData.isLoading) {
+		return (
+			<div className="max-w-4xl mx-auto">
+				<Card className="text-center p-8">
+					<p className="text-gray-500">Loading profile...</p>
+				</Card>
+			</div>
+		);
+	}
 
   if (userData.isError || userPosts.isError || friendsData.isError) {
     return (
@@ -131,38 +137,42 @@ const Profile: React.FC = () => {
     );
   }
 
-  const handleCancelRequest = async (friendId: string, name: string) => {
-    await cancelRequest(friendId);
-    toast({
-      title: "Friend request cancelled",
-      description: `Cancelled friend request to ${name}`,
-    });
-    queryClient.invalidateQueries({
-      queryKey: [`user/${userId || user?.id}`], // ✅ Refresh profile flags
-      exact: true,
-    });
-  };
+	// Check if the profile is private and if the current user can see the posts
+	const isProfilePrivate =
+		profileUser.privacy_level === 'private' &&
+		(user?.id !== userId || !profileUser.is_friend);
 
-  const handleRemoveFriend = async (friendId: string, name: string) => {
-    await remove(friendId);
-    toast({
-      title: "Friend removed",
-      description: `You have removed ${name} from your friends`,
-    });
-    queryClient.invalidateQueries({
-      queryKey: [`user/${userId || user?.id}`], // ✅ Refresh profile flags
-      exact: true,
-    });
-  };
+	// Handle canceling a friend request
+	const handleCancelRequest = async (friendId: string, name: string) => {
+		await cancelRequest(friendId);
+		toast({
+			title: 'Friend request cancelled',
+			description: `Cancelled friend request to ${name}`,
+		});
+		queryClient.invalidateQueries({
+			queryKey: [`user/${userId || user?.id}`],
+			exact: true,
+		});
+	};
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Profile Header */}
-      <Card className="backdrop-blur-sm bg-white/80 border-purple-100 shadow-lg">
-        <CardHeader className="relative">
-          {/* Cover Image */}
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 rounded-t-lg opacity-10"></div>
+	const handleRemoveFriend = async (friendId: string, name: string) => {
+		await remove(friendId);
+		toast({
+			title: 'Friend removed',
+			description: `You have removed ${name} from your friends`,
+		});
+		queryClient.invalidateQueries({
+			queryKey: [`user/${userId || user?.id}`],
+			exact: true,
+		});
+	};
 
+	return (
+		<div className="max-w-4xl mx-auto space-y-6">
+			{/* Profile Header */}
+			<Card className="backdrop-blur-sm bg-white/80 border-purple-100 shadow-lg">
+				<CardHeader className="relative">
+					<div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 rounded-t-lg opacity-10"></div>
           <div className="relative pt-8">
             <div className="flex flex-col md:flex-row items-center md:items-end space-y-4 md:space-y-0 md:space-x-6">
               {/* Avatar */}
@@ -269,120 +279,127 @@ const Profile: React.FC = () => {
         </CardHeader>
       </Card>
 
-      {/* Profile Content */}
-      <Tabs defaultValue="posts" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 bg-white/80 backdrop-blur-sm border border-purple-100">
-          <TabsTrigger
-            value="posts"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-blue-600 data-[state=active]:text-white"
-          >
-            Posts
-          </TabsTrigger>
-          <TabsTrigger
-            value="about"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-blue-600 data-[state=active]:text-white"
-          >
-            About
-          </TabsTrigger>
-          <TabsTrigger
-            value="friends"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-blue-600 data-[state=active]:text-white"
-          >
-            Friends
-          </TabsTrigger>
-        </TabsList>
+			{/* Profile Content */}
+			{isProfilePrivate && !isOwnProfile ? (
+				<div className="text-center text-gray-500">Profile is private</div>
+			) : (
+				<Tabs defaultValue="posts" className="w-full">
+					<TabsList className="grid w-full grid-cols-3 bg-white/80 backdrop-blur-sm border border-purple-100">
+						<TabsTrigger
+							value="posts"
+							className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-blue-600 data-[state=active]:text-white"
+						>
+							Posts
+						</TabsTrigger>
+						<TabsTrigger
+							value="about"
+							className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-blue-600 data-[state=active]:text-white"
+						>
+							About
+						</TabsTrigger>
+						<TabsTrigger
+							value="friends"
+							className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-blue-600 data-[state=active]:text-white"
+						>
+							Friends
+						</TabsTrigger>
+					</TabsList>
 
-        <TabsContent value="posts" className="space-y-4 mt-6">
-          {userPosts?.data.length > 0 ? (
-            userPosts.data.map((post) => <PostCard key={post.id} post={post} />)
-          ) : (
-            <Card className="text-center p-8 backdrop-blur-sm bg-white/80 border-purple-100">
-              <p className="text-gray-500">No posts yet</p>
-            </Card>
-          )}
-        </TabsContent>
+					<TabsContent value="posts" className="space-y-4 mt-6">
+						{userPosts?.data.length > 0 ? (
+							userPosts.data.map((post) => (
+								<PostCard
+									key={post.id}
+									post={post}
+									groupName={post.group_name}
+								/>
+							))
+						) : (
+							<Card className="text-center p-8 backdrop-blur-sm bg-white/80 border-purple-100">
+								<p className="text-gray-500">No posts yet</p>
+							</Card>
+						)}
+					</TabsContent>
 
-        <TabsContent value="about" className="mt-6">
-          <Card className="backdrop-blur-sm bg-white/80 border-purple-100 shadow-lg">
-            <CardContent className="p-6">
-              <h3 className="text-lg font-semibold mb-4">
-                About {profileUser.first_name}
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Bio
-                  </label>
-                  <p className="text-gray-800">
-                    {profileUser.bio || "No bio available"}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Email
-                  </label>
-                  <p className="text-gray-800">{profileUser.email}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Member since
-                  </label>
-                  <p className="text-gray-800">
-                    {extractSignupDate(profileUser).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="friends" className="mt-6">
-          <Card className="backdrop-blur-sm bg-white/80 border-purple-100 shadow-lg">
-            <CardContent className="p-6">
-              <h3 className="text-lg font-semibold mb-4">
-                Friends ({profileUser.friend_count})
-              </h3>
-              <div className="grid gap-4">
-                {friendsData.data?.map((friend) => (
-                  <Card
-                    key={friend.id}
-                    className="backdrop-blur-sm bg-white/80 border-purple-100"
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <img
-                            src={
-                              friend.profile_picture.includes("http")
-                                ? friend.profile_picture
-                                : `${IMG_BASE_URL}${friend.profile_picture}`
-                            }
-                            alt={`${friend.first_name} ${friend.last_name}`}
-                            className="w-12 h-12 rounded-full border-2 border-purple-200"
-                          />
-                          <div>
-                            <Link
-                              to={`/profile/${friend.id}`}
-                              className="text-sm font-medium text-gray-900 hover:text-purple-600 transition-colors"
-                            >
-                              {friend.first_name} {friend.last_name}
-                            </Link>
-                            <p className="text-sm text-gray-500">
-                              {friend.mutual_friends_count || 0} mutual friends
-                            </p>
-                          </div>
-                        </div>
-                        <div /> {/* Empty space on the right */}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
+					<TabsContent value="about" className="mt-6">
+						<Card className="backdrop-blur-sm bg-white/80 border-purple-100 shadow-lg">
+							<CardContent className="p-6">
+								<h3 className="text-lg font-semibold mb-4">
+									About {profileUser.first_name}
+								</h3>
+								<div className="space-y-4">
+									<div>
+										<label className="text-sm font-medium text-gray-500">
+											Bio
+										</label>
+										<p className="text-gray-800">
+											{profileUser.bio || 'No bio available'}
+										</p>
+									</div>
+									<div>
+										<label className="text-sm font-medium text-gray-500">
+											Email
+										</label>
+										<p className="text-gray-800">{profileUser.email}</p>
+									</div>
+									<div>
+										<label className="text-sm font-medium text-gray-500">
+											Member since
+										</label>
+										<p className="text-gray-800">
+											{extractSignupDate(profileUser).toLocaleDateString()}
+										</p>
+									</div>
+								</div>
+							</CardContent>
+						</Card>
+					</TabsContent>
+					<TabsContent value="friends" className="mt-6">
+						<Card className="backdrop-blur-sm bg-white/80 border-purple-100 shadow-lg">
+							<CardContent className="p-6">
+								<h3 className="text-lg font-semibold mb-4">
+									Friends ({profileUser.friend_count})
+								</h3>
+								<div className="grid gap-4">
+									{friendsData.data?.map((friend) => (
+										<Card
+											key={friend.id}
+											className="backdrop-blur-sm bg-white/80 border-purple-100"
+										>
+											<CardContent className="p-4">
+												<div className="flex items-center justify-between">
+													<div className="flex items-center space-x-4">
+														<img
+															src={`http://localhost:5000${friend.profile_picture}`}
+															alt={`${friend.first_name} ${friend.last_name}`}
+															className="w-12 h-12 rounded-full border-2 border-purple-200"
+														/>
+														<div>
+															<Link
+																to={`/profile/${friend.id}`}
+																className="text-sm font-medium text-gray-900 hover:text-purple-600 transition-colors"
+															>
+																{friend.first_name} {friend.last_name}
+															</Link>
+															<p className="text-sm text-gray-500">
+																{friend.mutual_friends_count || 0} mutual
+																friends
+															</p>
+														</div>
+													</div>
+													<div /> {/* Empty space on the right */}
+												</div>
+											</CardContent>
+										</Card>
+									))}
+								</div>
+							</CardContent>
+						</Card>
+					</TabsContent>
+				</Tabs>
+			)}
+		</div>
+	);
 };
 
 export default Profile;

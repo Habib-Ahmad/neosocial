@@ -1,6 +1,7 @@
 import { driver, session } from "../db/neo4j";
 import neo4j from "neo4j-driver";
 import { User } from "../models/User";
+
 export const createUser = async (user: User) => {
   const session = driver.session();
 
@@ -14,7 +15,8 @@ export const createUser = async (user: User) => {
       last_name: $last_name,
       profile_picture: $profile_picture,
       created_at: datetime(),
-      status: $status
+      status: $status,
+      privacy_level: $privacy_level  // Set privacy_level to public by default
     })
     RETURN u
     `,
@@ -26,6 +28,7 @@ export const createUser = async (user: User) => {
       last_name: user.last_name,
       profile_picture: user.profile_picture || "", // Default to empty if undefined
       status: "active",
+      privacy_level: user.privacy_level || "public", // Set default privacy_level to "public"
     }
   );
 
@@ -412,11 +415,22 @@ export const getUserGroupsService = async (userId: string) => {
   const result = await session.run(
     `
     MATCH (u:User {id: $userId})-[:MEMBER_OF]->(g:Group)
-    RETURN g ORDER BY g.created_at DESC
+    OPTIONAL MATCH (g)<-[:MEMBER_OF]-(member:User)
+    RETURN g, count(DISTINCT member) AS member_count
+    ORDER BY g.created_at DESC
     `,
     { userId }
   );
 
-  const groups = result.records.map((record) => record.get("g").properties);
+  const groups = result.records.map((record) => {
+    const group = record.get("g").properties;
+    const member_count = record.get("member_count").toInt();
+
+    return {
+      ...group,
+      member_count,
+    };
+  });
+
   return groups;
 };

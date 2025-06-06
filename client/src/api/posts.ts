@@ -8,9 +8,25 @@ export const createPost = async (formData: FormData) => {
 			'Content-Type': 'multipart/form-data',
 		},
 	});
-	return response.data;
+	return response.data.post;
+};
+export const repostPost = async (postId: string) => {
+	const response = await axiosInstance.patch(urls.posts.repost(postId));
+	return response.data.message; // Assuming the response is a message indicating success
 };
 
+export const createGroupPost = async (groupId: string, formData: FormData) => {
+	const response = await axiosInstance.post(
+		urls.posts.createGroupPost(groupId), // ✅ use URL builder
+		formData,
+		{
+			headers: {
+				'Content-Type': 'multipart/form-data',
+			},
+		}
+	);
+	return response.data.post;
+};
 export const getAllPosts = async () => {
 	const response = await axiosInstance.get(urls.posts.getAll);
 	return response.data.posts;
@@ -29,6 +45,12 @@ export const getDiscoverFeed = async () => {
 export const getPostsByUserId = async (userId: string) => {
 	const response = await axiosInstance.get(urls.posts.getByUserId(userId));
 	return response.data.posts;
+};
+export const getRepostedPostsByUserId = async (userId: string) => {
+	const response = await axiosInstance.get(
+		urls.posts.getRepostedPostsByUserId(userId)
+	);
+	return response.data.repostedPosts;
 };
 
 export const getPostById = async (id: string) => {
@@ -51,4 +73,9 @@ export const toggleCommentLike = async (commentId: string) => {
 		urls.posts.toggleCommentLike(commentId)
 	);
 	return response.data.comment;
+};
+
+export const deletePostService = async (id: string) => {
+	const response = await axiosInstance.delete(urls.posts.delete(id));
+	return response.data.message; // Assuming the response is a message indicating success
 };

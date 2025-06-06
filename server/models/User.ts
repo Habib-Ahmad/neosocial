@@ -27,6 +27,6 @@ export interface User {
   birth_date?: BirthDate;
   created_at?: Timestamp;
   last_active?: Timestamp;
-  privacy_level?: "public" | "private" | "friends_only";
+  privacy_level?: "public" | "private";
   status?: "active" | "inactive" | "banned";
 }

@@ -23,9 +23,22 @@ export const registerUser = async (req: Request, res: Response) => {
   try {
     const user = req.body;
 
-    if (!user || !user.email || !user.password || !user.first_name || !user.last_name) {
-      throw new Error("Please provide all required fields");
+    // Validate that all required fields are provided, including privacy
+    if (
+      !user ||
+      !user.email ||
+      !user.password ||
+      !user.first_name ||
+      !user.last_name
+      // !user.privacy_level
+    ) {
+      throw new Error("Please provide all required fields including privacy");
     }
+
+    // // Ensure privacy is either 'public' or 'private'
+    // if (user.privacy_level !== "public" && user.privacy_level !== "private") {
+    //   throw new Error("Privacy must be either 'public' or 'private'");
+    // }
 
     const existingUser = await getUserByEmail(user.email);
     if (existingUser) {
@@ -39,8 +52,9 @@ export const registerUser = async (req: Request, res: Response) => {
 
     user.profile_picture = req.file
       ? `/uploads/users/${req.file.filename}`
-      : "https://www.svgrepo.com/show/452030/avatar-default.svg";
+      : "/uploads/users/user.jpg";
 
+    // Pass privacy field to createUser function
     const result = await createUser(user);
 
     const tokenSecret = process.env.TOKEN_SECRET!;
@@ -166,7 +180,6 @@ export const getUserById = async (req: Request, res: Response) => {
     throw new Error("Internal server error while fetching user by ID");
   }
 };
-
 export const updateUserProfile = async (req: Request, res: Response) => {
   try {
     const user = req.user;
@@ -176,6 +189,7 @@ export const updateUserProfile = async (req: Request, res: Response) => {
     }
 
     const updates = req.body;
+
     if (!updates || Object.keys(updates).length === 0) {
       res.status(400);
       throw new Error("No updates provided");
@@ -185,6 +199,15 @@ export const updateUserProfile = async (req: Request, res: Response) => {
     if (updates.password || updates.password_hash) {
       delete updates.password;
       delete updates.password_hash;
+    }
+
+    // Handle privacy level
+    if (
+      updates.privacy_level &&
+      updates.privacy_level !== "public" &&
+      updates.privacy_level !== "private"
+    ) {
+      throw new Error("Privacy must be either 'public' or 'private'");
     }
 
     const updatedUser = await updateUser(user.id, updates);

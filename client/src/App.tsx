@@ -16,6 +16,7 @@ import Layout from "./components/Layout";
 import Groups from "./pages/Groups";
 import CreateGroup from "./pages/CreateGroup";
 import GroupView from "./pages/GroupView";
+import EditGroup from './pages/EditGroup';
 import Messages from "./pages/Messages";
 
 const queryClient = new QueryClient();
@@ -31,100 +32,101 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Navigate to="/home" />} />
-            <Route
-              path="/login"
-              element={
-                <PublicRoute>
-                  <Login />
-                </PublicRoute>
-              }
-            />
-            <Route
-              path="/register"
-              element={
-                <PublicRoute>
-                  <Register />
-                </PublicRoute>
-              }
-            />
-            <Route
-              path="/home"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Home />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile/:userId?"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Profile />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/edit-profile"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <EditProfile />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/post/:postId"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <PostView />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/groups/:groupId"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <GroupView />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/friends"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Friends />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/notifications"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Notifications />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
+	<QueryClientProvider client={queryClient}>
+		<TooltipProvider>
+			<Toaster />
+			<Sonner />
+			<AuthProvider>
+				<BrowserRouter>
+					<Routes>
+						<Route path="/" element={<Navigate to="/home" />} />
+						<Route
+							path="/login"
+							element={
+								<PublicRoute>
+									<Login />
+								</PublicRoute>
+							}
+						/>
+						<Route
+							path="/register"
+							element={
+								<PublicRoute>
+									<Register />
+								</PublicRoute>
+							}
+						/>
+						<Route
+							path="/home"
+							element={
+								<ProtectedRoute>
+									<Layout>
+										<Home />
+									</Layout>
+								</ProtectedRoute>
+							}
+						/>
+						<Route
+							path="/profile/:userId?"
+							element={
+								<ProtectedRoute>
+									<Layout>
+										<Profile />
+									</Layout>
+								</ProtectedRoute>
+							}
+						/>
+						<Route
+							path="/edit-profile"
+							element={
+								<ProtectedRoute>
+									<Layout>
+										<EditProfile />
+									</Layout>
+								</ProtectedRoute>
+							}
+						/>
+						Route
+						<Route
+							path="/post/:postId"
+							element={
+								<ProtectedRoute>
+									<Layout>
+										<PostView />
+									</Layout>
+								</ProtectedRoute>
+							}
+						/>
+						<Route
+							path="/groups/:groupId"
+							element={
+								<ProtectedRoute>
+									<Layout>
+										<GroupView />
+									</Layout>
+								</ProtectedRoute>
+							}
+						/>
+						<Route
+							path="/friends"
+							element={
+								<ProtectedRoute>
+									<Layout>
+										<Friends />
+									</Layout>
+								</ProtectedRoute>
+							}
+						/>
+						<Route
+							path="/notifications"
+							element={
+								<ProtectedRoute>
+									<Layout>
+										<Notifications />
+									</Layout>
+								</ProtectedRoute>
+							}
+						/>
             <Route
               path="/messages"
               element={
@@ -145,41 +147,51 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/groups"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Groups />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/groups"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Groups />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/create-group"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <CreateGroup />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
+						<Route
+							path="/groups"
+							element={
+								<ProtectedRoute>
+									<Layout>
+										<Groups />
+									</Layout>
+								</ProtectedRoute>
+							}
+						/>
+						<Route
+							path="/groups"
+							element={
+								<ProtectedRoute>
+									<Layout>
+										<Groups />
+									</Layout>
+								</ProtectedRoute>
+							}
+						/>
+						<Route
+							path="/create-group"
+							element={
+								<ProtectedRoute>
+									<Layout>
+										<CreateGroup />
+									</Layout>
+								</ProtectedRoute>
+							}
+						/>
+						<Route
+							path="/edit-group/:groupId"
+							element={
+								<ProtectedRoute>
+									<Layout>
+										<EditGroup />
+									</Layout>
+								</ProtectedRoute>
+							}
+						/>
+					</Routes>
+				</BrowserRouter>
+			</AuthProvider>
+		</TooltipProvider>
+	</QueryClientProvider>
 );
 
 export default App;
