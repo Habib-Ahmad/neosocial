@@ -281,6 +281,7 @@ export const getPostsByUserIdService = async (userId: string, viewerId: string):
     };
   });
 };
+
 export const getPostByIdService = async (id: string, viewerId: string): Promise<Post | null> => {
   const session = driver.session();
 
@@ -452,6 +453,7 @@ export const deletePostService = async (userId: string, postId: string): Promise
 
   return result.records.length > 0;
 };
+
 export const toggleCommentLikeService = async (userId: string, commentId: string) => {
   const session = driver.session();
   const result = await session.run(

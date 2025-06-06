@@ -317,8 +317,6 @@ export const cancelFriendRequest = async (req: Request, res: Response) => {
       throw new Error("Invalid request");
     }
 
-    console.log({ fromId, toId });
-
     const success = await cancelFriendRequestService(fromId, toId);
     if (!success) {
       throw new Error("Failed to cancel friend request or request not found");
