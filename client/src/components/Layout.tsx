@@ -130,7 +130,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 					</Link>
 
 					<Link
-						to="/profile"
+						to={`/profile/${user.id}`} // This will link to the specific user profile page
 						className={`flex flex-col items-center space-y-1 px-3 py-2 rounded-lg transition-all ${
 							isActive('/profile') ? 'text-purple-600' : 'text-gray-600'
 						}`}

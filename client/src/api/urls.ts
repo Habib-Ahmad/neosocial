@@ -27,6 +27,8 @@ export const urls = {
 		getLatestFeed: '/posts/latest',
 		getDiscoverFeed: '/posts/discover',
 		getByUserId: (userId: string) => `/posts/user/${userId}`,
+		getRepostedPostsByUserId: (userId: string) =>
+			`/posts/user/${userId}/reposts`, // <-- Add this line for reposted posts
 		getById: (id: string) => `/posts/${id}`,
 		update: (id: string) => `/posts/${id}`,
 		delete: (id: string) => `/posts/${id}`,
@@ -35,6 +37,7 @@ export const urls = {
 			`posts/${commentId}/comments/like`,
 		createComment: (postId: string) => `/posts/${postId}/comments`,
 		createGroupPost: (groupId: string) => `/posts/${groupId}`,
+		repost: (postId: string) => `/posts/${postId}/repost`, // <-- Add this line for repost
 	},
 	groups: {
 		create: '/groups',
