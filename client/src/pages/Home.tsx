@@ -5,6 +5,7 @@ import CreatePost from '@/components/CreatePost';
 import { useQuery } from '@tanstack/react-query';
 import { Post } from '@/interface/Post';
 import { getLatestFeed, getDiscoverFeed } from '@/api/posts';
+import { resolveImageUrl } from '@/lib/utils';
 
 const Home: React.FC = () => {
 	const [activeTab, setActiveTab] = useState('latest');
@@ -54,15 +55,25 @@ const Home: React.FC = () => {
 				</TabsList>
 
 				<TabsContent value="latest" className="space-y-4 mt-6">
-					{latestFeed.data?.length
-						? latestFeed.data.map((post) => (
-								<PostCard
-									key={post.id}
-									post={post}
-									groupName={post.group_name || null} // Pass group_name if exists
-								/>
-						  ))
-						: null}
+					{latestFeed.data && latestFeed.data.length > 0 ? (
+						latestFeed.data.map((post) => (
+							<PostCard
+								key={post.id}
+								post={post}
+								groupName={post.group_name || null}
+							/>
+						))
+					) : (
+						<div className="text-center p-8 backdrop-blur-sm bg-white/80 border border-purple-100 rounded-xl">
+							<p className="text-gray-600 mb-2">
+								Your feed is currently empty.
+							</p>
+							<p className="text-gray-500">
+								Make a post, add friends, or join a group to see their latest
+								posts here.
+							</p>
+						</div>
+					)}
 				</TabsContent>
 
 				<TabsContent value="discover" className="space-y-4 mt-6">

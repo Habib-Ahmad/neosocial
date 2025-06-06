@@ -16,6 +16,7 @@ import {
 } from '@/api/groups';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { resolveImageUrl } from '@/lib/utils';
 
 const GroupProfile: React.FC = () => {
 	const { user } = useAuth();
@@ -117,10 +118,7 @@ const GroupProfile: React.FC = () => {
 						<div className="flex flex-col md:flex-row items-center md:items-end space-y-4 md:space-y-0 md:space-x-6">
 							<div className="relative">
 								<img
-									src={
-										`http://localhost:5000${group.cover_image}` ||
-										'/default_group.png'
-									}
+									src={resolveImageUrl(group.cover_image)}
 									alt={group.name}
 									className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white shadow-lg"
 								/>
@@ -256,10 +254,7 @@ const GroupProfile: React.FC = () => {
 												<div className="flex items-center justify-between">
 													<div className="flex items-center space-x-4">
 														<img
-															src={
-																`http://localhost:5000${member.profile_picture}` ||
-																'/default_profile.png'
-															}
+															src={resolveImageUrl(member.profile_picture)}
 															alt={`${member.first_name} ${member.last_name}`}
 															className="w-12 h-12 rounded-full border-2 border-purple-200"
 														/>

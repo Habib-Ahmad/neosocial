@@ -11,6 +11,7 @@ import { useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSocket } from '@/hooks/useSocket';
 import { useConversationData } from '@/hooks/useConversationData';
+import { resolveImageUrl } from '@/lib/utils';
 
 const Messages: React.FC = () => {
 	const { userId } = useParams();
@@ -160,10 +161,7 @@ const Messages: React.FC = () => {
 										<div className="flex items-center space-x-3">
 											<div className="relative">
 												<img
-													src={
-														`http://localhost:5000${conversation.participantAvatar}` ||
-														'https://sbcf.fr/wp-content/uploads/2018/03/sbcf-default-avatar.png'
-													}
+													src={resolveImageUrl(conversation.participantAvatar)}
 													alt={conversation.participantName || 'User Avatar'}
 													className="w-10 h-10 rounded-full object-cover"
 												/>
@@ -210,7 +208,7 @@ const Messages: React.FC = () => {
 							<div className="p-3 border-b flex items-center space-x-3">
 								<div className="relative">
 									<img
-										src={`http://localhost:5000${activeConversation.participantAvatar}`}
+										src={resolveImageUrl(activeConversation.participantAvatar)}
 										alt={activeConversation.participantName}
 										className="w-10 h-10 rounded-full object-cover"
 									/>

@@ -19,6 +19,7 @@ import { Post } from '@/interface/Post';
 import { getPostsByUserId } from '@/api/posts';
 import { useToast } from '@/hooks/use-toast';
 import { IMG_BASE_URL } from '@/api';
+import { resolveImageUrl } from '@/lib/utils';
 
 function extractSignupDate(user: User): Date {
 	const { created_at } = user;
@@ -178,11 +179,7 @@ const Profile: React.FC = () => {
 							{/* Avatar */}
 							<div className="relative">
 								<img
-									src={
-										profileUser.profile_picture.includes('http')
-											? profileUser.profile_picture
-											: `${IMG_BASE_URL}${profileUser.profile_picture}`
-									}
+									src={resolveImageUrl(profileUser.profile_picture)}
 									alt={profileUser.first_name}
 									className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white shadow-lg"
 								/>
@@ -370,7 +367,7 @@ const Profile: React.FC = () => {
 												<div className="flex items-center justify-between">
 													<div className="flex items-center space-x-4">
 														<img
-															src={`http://localhost:5000${friend.profile_picture}`}
+															src={resolveImageUrl(friend.profile_picture)}
 															alt={`${friend.first_name} ${friend.last_name}`}
 															className="w-12 h-12 rounded-full border-2 border-purple-200"
 														/>
