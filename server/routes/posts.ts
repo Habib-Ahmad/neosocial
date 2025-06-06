@@ -14,11 +14,13 @@ import {
   getCommentsForPost,
   createCommentForPost,
   toggleCommentLike,
+  createGroupPost,
 } from "../controllers/postController";
 
 const router = express.Router();
 
 router.post("/", validateToken, postUpload.array("media"), createPost);
+router.post("/:groupId", validateToken, postUpload.array("media"), createGroupPost);
 router.get("/latest", validateToken, getLatestFeed);
 router.get("/discover", validateToken, getDiscoverFeed);
 router.get("/:id", validateToken, getPostById);

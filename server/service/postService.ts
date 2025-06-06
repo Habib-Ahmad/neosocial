@@ -39,6 +39,64 @@ export const createPostService = async (userId: string, body: any): Promise<Post
 
   return result.records[0].get("p").properties;
 };
+export const createGroupPostService = async (
+  userId: string,
+  groupId: string,
+  body: any
+): Promise<Post> => {
+  const postId = uuidv4();
+  const now = new Date().toISOString();
+
+  const session = driver.session();
+
+  // Check if user is a member of the group
+  const membershipCheck = await session.run(
+    `
+    MATCH (u:User {id: $userId})-[:MEMBER_OF]->(g:Group {id: $groupId})
+    RETURN g
+    `,
+    { userId, groupId }
+  );
+
+  if (membershipCheck.records.length === 0) {
+    await session.close();
+    throw new Error("User is not a member of this group");
+  }
+
+  const result = await session.run(
+    `
+    MATCH (u:User {id: $userId}), (g:Group {id: $groupId})
+    CREATE (p:Post {
+      id: $postId,
+      content: $content,
+      category: $category,
+      created_at: datetime($now),
+      updated_at: datetime($now),
+      is_deleted: false,
+      likes_count: 0,
+      comments_count: 0,
+      reposts_count: 0,
+      media_urls: $mediaUrls,
+      post_type: "group"
+    })
+    CREATE (u)-[:POSTED]->(p)
+    CREATE (p)-[:POSTED_IN]->(g)
+    RETURN p
+    `,
+    {
+      userId,
+      groupId,
+      postId,
+      now,
+      content: body.content,
+      category: body.category || "",
+      mediaUrls: body.mediaUrls || [],
+    }
+  );
+
+  await session.close();
+  return result.records[0].get("p").properties;
+};
 
 export const createCommentForPostService = async (
   userId: string,
@@ -250,10 +308,11 @@ export const getPostsByUserIdService = async (userId: string, viewerId: string):
   const result = await session.run(
     `
     MATCH (author:User {id: $userId})-[:POSTED]->(p:Post)
+    OPTIONAL MATCH (p)-[:POSTED_IN]->(g:Group)
     OPTIONAL MATCH (viewer:User {id: $viewerId})
-    WITH p, author, viewer, EXISTS((viewer)-[:LIKED]->(p)) AS liked_by_me
+    WITH p, author, g.name AS group_name, viewer, EXISTS((viewer)-[:LIKED]->(p)) AS liked_by_me
     WHERE p.is_deleted = false
-    RETURN p, author, liked_by_me
+    RETURN p, author, liked_by_me, group_name
     ORDER BY p.created_at DESC
     `,
     { userId, viewerId }
@@ -263,6 +322,7 @@ export const getPostsByUserIdService = async (userId: string, viewerId: string):
     const rawPost = record.get("p").properties;
     const rawUser = record.get("author").properties;
     const likedByMe = record.get("liked_by_me");
+    const groupName = record.has("group_name") ? record.get("group_name") : null;
 
     return {
       ...rawPost,
@@ -278,9 +338,11 @@ export const getPostsByUserIdService = async (userId: string, viewerId: string):
         email: rawUser.email,
         profile_picture: rawUser.profile_picture || "",
       },
+      group_name: groupName,
     };
   });
 };
+
 export const getPostByIdService = async (id: string, viewerId: string): Promise<Post | null> => {
   const session = driver.session();
 

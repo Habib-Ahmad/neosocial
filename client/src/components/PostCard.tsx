@@ -10,9 +10,10 @@ import { togglePostLike } from '@/api/posts';
 
 interface PostCardProps {
 	post: Post;
+	groupName?: string;
 }
 
-const PostCard: React.FC<PostCardProps> = ({ post }) => {
+const PostCard: React.FC<PostCardProps> = ({ post, groupName }) => {
 	const [isLiked, setIsLiked] = useState(post.liked_by_me || false);
 	const [isSaved, setIsSaved] = useState(false);
 	const [likesCount, setLikesCount] = useState(post.likes_count);
@@ -71,12 +72,19 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 							className="w-10 h-10 rounded-full border-2 border-purple-200"
 						/>
 						<div>
-							<Link
-								to={`/profile/${post.author.id}`}
-								className="font-medium text-gray-900 hover:text-purple-600 transition-colors"
-							>
-								{post.author.name}
-							</Link>
+							<div className="flex items-center gap-1 flex-wrap">
+								<Link
+									to={`/profile/${post.author.id}`}
+									className="font-medium text-gray-900 hover:text-purple-600 transition-colors"
+								>
+									{post.author.name}
+								</Link>
+								{groupName && (
+									<span className="text-xs text-gray-500 italic">
+										(from {groupName})
+									</span>
+								)}
+							</div>
 							<p className="text-sm text-gray-500 flex items-center space-x-2">
 								<span>{formatDate(post.created_at)}</span>
 								{post.category && (

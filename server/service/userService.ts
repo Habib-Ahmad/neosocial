@@ -412,11 +412,22 @@ export const getUserGroupsService = async (userId: string) => {
   const result = await session.run(
     `
     MATCH (u:User {id: $userId})-[:MEMBER_OF]->(g:Group)
-    RETURN g ORDER BY g.created_at DESC
+    OPTIONAL MATCH (g)<-[:MEMBER_OF]-(member:User)
+    RETURN g, count(DISTINCT member) AS member_count
+    ORDER BY g.created_at DESC
     `,
     { userId }
   );
 
-  const groups = result.records.map((record) => record.get("g").properties);
+  const groups = result.records.map((record) => {
+    const group = record.get("g").properties;
+    const member_count = record.get("member_count").toInt();
+
+    return {
+      ...group,
+      member_count,
+    };
+  });
+
   return groups;
 };

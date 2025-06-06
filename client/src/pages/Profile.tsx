@@ -281,7 +281,9 @@ const Profile: React.FC = () => {
 
 				<TabsContent value="posts" className="space-y-4 mt-6">
 					{userPosts?.data.length > 0 ? (
-						userPosts.data.map((post) => <PostCard key={post.id} post={post} />)
+						userPosts.data.map((post) => (
+							<PostCard key={post.id} post={post} groupName={post.group_name} />
+						))
 					) : (
 						<Card className="text-center p-8 backdrop-blur-sm bg-white/80 border-purple-100">
 							<p className="text-gray-500">No posts yet</p>
