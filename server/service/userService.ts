@@ -1,6 +1,7 @@
 import { driver, session } from "../db/neo4j";
 import neo4j from "neo4j-driver";
 import { User } from "../models/User";
+
 export const createUser = async (user: User) => {
   const session = driver.session();
 
@@ -14,7 +15,8 @@ export const createUser = async (user: User) => {
       last_name: $last_name,
       profile_picture: $profile_picture,
       created_at: datetime(),
-      status: $status
+      status: $status,
+      privacy_level: $privacy_level  // Set privacy_level to public by default
     })
     RETURN u
     `,
@@ -26,6 +28,7 @@ export const createUser = async (user: User) => {
       last_name: user.last_name,
       profile_picture: user.profile_picture || "", // Default to empty if undefined
       status: "active",
+      privacy_level: user.privacy_level || "public", // Set default privacy_level to "public"
     }
   );
 

@@ -2,35 +2,57 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Heart, MessageSquare, Bookmark, MoreHorizontal } from 'lucide-react';
+import { Heart, MessageSquare, X } from 'lucide-react'; // Use X icon for delete
 import { useToast } from '@/hooks/use-toast';
-import { Post } from '@/interface/Post';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { togglePostLike } from '@/api/posts';
+import { togglePostLike, deletePostService } from '@/api/posts'; // Assuming you have deletePostService in API
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PostCardProps {
-	post: Post;
+	post: any; // Post type adjusted according to your data structure
 	groupName?: string;
 }
 
 const PostCard: React.FC<PostCardProps> = ({ post, groupName }) => {
+	const { user } = useAuth(); // Get current user from context
+
 	const [isLiked, setIsLiked] = useState(post.liked_by_me || false);
-	const [isSaved, setIsSaved] = useState(false);
 	const [likesCount, setLikesCount] = useState(post.likes_count);
 	const { toast } = useToast();
+	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); // Show delete confirmation
 
 	const queryClient = useQueryClient();
 
-	const { mutateAsync } = useMutation({
+	const { mutateAsync: likePost } = useMutation({
 		mutationFn: togglePostLike,
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['posts'], exact: true });
 		},
 	});
 
+	const { mutateAsync: deletePost } = useMutation({
+		mutationFn: deletePostService,
+		onSuccess: () => {
+			toast({
+				title: 'Post deleted successfully',
+				description: 'The post has been marked as deleted.',
+			});
+			queryClient.invalidateQueries({ queryKey: ['posts'], exact: true });
+			window.location.reload(); // Refresh the page after deletion
+		},
+		onError: (error) => {
+			toast({
+				title: 'Failed to delete post',
+				description:
+					error.message || 'An error occurred while deleting the post.',
+				variant: 'destructive',
+			});
+		},
+	});
+
 	const handleLike = async () => {
 		try {
-			const updatedPost = await mutateAsync(post.id);
+			const updatedPost = await likePost(post.id);
 			setIsLiked(updatedPost.liked_by_me);
 			setLikesCount(updatedPost.likes_count);
 		} catch (error) {
@@ -41,22 +63,31 @@ const PostCard: React.FC<PostCardProps> = ({ post, groupName }) => {
 		}
 	};
 
-	const handleSave = () => {
-		setIsSaved(!isSaved);
+	const handleDeletePost = async () => {
+		if (!user || user.id !== post.author.id) return; // Ensure only the post owner can delete
 
-		toast({
-			title: isSaved ? 'Post unsaved' : 'Post saved',
-			description: isSaved
-				? 'Removed from saved posts'
-				: 'Added to saved posts',
-		});
+		try {
+			await deletePost(post.id);
+		} catch (error) {
+			console.error('Error deleting post:', error);
+		}
+	};
+
+	const handleDeleteConfirm = () => {
+		if (user?.id === post.author.id) {
+			const confirmed = window.confirm(
+				'Are you sure you want to delete this post?'
+			);
+			if (confirmed) {
+				handleDeletePost(); // If confirmed, delete the post
+			}
+		}
 	};
 
 	const formatDate = (dateString: string) => {
-		// Format to DD/MM/YYYY
 		const date = new Date(dateString);
 		const day = String(date.getDate()).padStart(2, '0');
-		const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+		const month = String(date.getMonth() + 1).padStart(2, '0');
 		const year = date.getFullYear();
 		return `${day}/${month}/${year}`;
 	};
@@ -99,13 +130,16 @@ const PostCard: React.FC<PostCardProps> = ({ post, groupName }) => {
 						</div>
 					</div>
 
-					<Button
-						variant="ghost"
-						size="sm"
-						className="text-gray-500 hover:text-gray-700"
-					>
-						<MoreHorizontal size={16} />
-					</Button>
+					{user?.id === post.author.id && (
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={handleDeleteConfirm}
+							className="text-gray-500 hover:text-red-500"
+						>
+							<X size={16} />
+						</Button>
+					)}
 				</div>
 			</CardHeader>
 
@@ -153,19 +187,6 @@ const PostCard: React.FC<PostCardProps> = ({ post, groupName }) => {
 							<span>{post.comments_count}</span>
 						</Link>
 					</div>
-
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={handleSave}
-						className={`transition-colors ${
-							isSaved
-								? 'text-purple-500 hover:text-purple-600'
-								: 'text-gray-500 hover:text-purple-500'
-						}`}
-					>
-						<Bookmark size={18} className={isSaved ? 'fill-current' : ''} />
-					</Button>
 				</div>
 			</CardContent>
 		</Card>

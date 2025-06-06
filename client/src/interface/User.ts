@@ -3,6 +3,7 @@ export interface SignupPayload {
 	last_name: string;
 	email: string;
 	password: string;
+	privacy_level: 'public' | 'private';
 }
 
 export interface User extends SignupPayload {

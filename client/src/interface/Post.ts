@@ -35,3 +35,7 @@ export interface Post extends PostPayload {
 		};
 	}[];
 }
+
+export interface Repost extends Post {
+	reposted_by_me: boolean;
+}

@@ -252,14 +252,19 @@ export const searchGroupsService = async (query: string) => {
       toLower(g.description) CONTAINS toLower($query) OR
       toLower(g.category) CONTAINS toLower($query)
     )
-    RETURN g
+    OPTIONAL MATCH (g)<-[:MEMBER_OF]-(m:User)
+    RETURN g, COUNT(m) AS memberCount
     ORDER BY g.member_count DESC
     LIMIT 20
     `,
     { query }
   );
 
-  return result.records.map((r) => r.get("g").properties);
+  return result.records.map((r) => {
+    const group = r.get("g").properties;
+    const member_count = r.get("memberCount").toNumber();
+    return { ...group, member_count };
+  });
 };
 
 export const getGroupDetailsService = async (groupId: string, userId: string) => {
