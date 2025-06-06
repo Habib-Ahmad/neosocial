@@ -183,55 +183,93 @@ export const getCommentsForPostService = async (postId: string, userId: string) 
 };
 export const getDiscoverFeedService = async (userId: string): Promise<any[]> => {
   const session = driver.session();
+
   try {
-    // Step 1: Fetch categories the user has liked
+    // Step 1: Count how many posts the user has liked per category
     const likedCategoriesResult = await session.run(
       `
-      MATCH (u:User {id: $userId})-[:LIKED]->(likedPost:Post)
-      WITH u, collect(DISTINCT likedPost.category) AS likedCategories
-      RETURN likedCategories
+      MATCH (:User {id: $userId})-[:LIKED]->(p:Post)
+      WHERE p.category IS NOT NULL
+      RETURN p.category AS category, COUNT(p) AS likeCount
+      ORDER BY likeCount DESC
       `,
       { userId }
     );
 
-    const likedCategories = likedCategoriesResult.records[0]?.get("likedCategories") || [];
+    const likedCategories = likedCategoriesResult.records.map((r) => ({
+      category: r.get("category"),
+      count: r.get("likeCount").toNumber(),
+    }));
 
-    if (likedCategories.length === 0) {
-      return []; // If no liked categories, return an empty array
+    let personalizedPosts: any[] = [];
+
+    // Step 2: If there is a top liked category, fetch posts from it
+    if (likedCategories.length > 0) {
+      const topCategory = likedCategories[0].category;
+
+      const personalizedResult = await session.run(
+        `
+        MATCH (author:User)-[:POSTED]->(p:Post)
+        WHERE p.category = $category
+          AND author.privacy_level = 'public'
+          AND p.is_deleted = false
+        RETURN p, author
+        ORDER BY p.created_at DESC
+        LIMIT 12
+        `,
+        { category: topCategory }
+      );
+
+      personalizedPosts = personalizedResult.records.map((record) => {
+        const rawPost = record.get("p").properties;
+        const rawUser = record.get("author").properties;
+
+        return {
+          ...rawPost,
+          likes_count: toNumber(rawPost.likes_count),
+          comments_count: toNumber(rawPost.comments_count),
+          reposts_count: toNumber(rawPost.reposts_count),
+          created_at: timestampToDate(rawPost.created_at),
+          updated_at: timestampToDate(rawPost.updated_at),
+          author: {
+            id: rawUser.id,
+            name: `${rawUser.first_name} ${rawUser.last_name}`,
+            email: rawUser.email,
+            profile_picture: rawUser.profile_picture || "",
+          },
+        };
+      });
     }
 
-    // Step 2: Identify the most liked category
-    const categoryLikeCountsResult = await session.run(
+    const fetchedIds = personalizedPosts.map((p) => p.id);
+
+    // Step 3: Fill the rest with random public posts not from friends or already fetched
+    const fillerCount = 20 - personalizedPosts.length;
+
+    const fillerResult = await session.run(
       `
-      MATCH (u:User {id: $userId})-[:LIKED]->(likedPost:Post)
-      WHERE likedPost.category IN $likedCategories
-      RETURN likedPost.category AS categoryName, COUNT(likedPost) AS likeCount
-      ORDER BY likeCount DESC
-      LIMIT 1
+      MATCH (s:User)-[:POSTED]->(p:Post)
+      WHERE s.id <> $userId
+        AND s.privacy_level = 'public'
+        AND p.is_deleted = false
+        AND NOT (s)-[:FRIENDS_WITH]-(:User {id: $userId})
+        AND NOT (s)<-[:SENT_FRIEND_REQUEST]-(:User {id: $userId})
+        AND NOT (s)-[:SENT_FRIEND_REQUEST]->(:User {id: $userId})
+        AND NOT p.id IN $fetchedIds
+      RETURN p, s
+      ORDER BY rand()
+      LIMIT $fillerCount
       `,
-      { userId, likedCategories }
+      {
+        userId,
+        fillerCount: neo4j.int(fillerCount),
+        fetchedIds,
+      }
     );
 
-    const mostLikedCategory = categoryLikeCountsResult.records[0]?.get("categoryName");
-
-    if (!mostLikedCategory) {
-      return []; // If no liked category is found, return an empty array
-    }
-
-    // Step 3: Fetch posts from the most liked category
-    const topCategoryPostsResult = await session.run(
-      `
-      MATCH (author:User)-[:POSTED]->(p:Post)
-      WHERE p.category = $mostLikedCategory AND author.privacy_level = 'public' AND p.is_deleted = false
-      RETURN p, author
-      ORDER BY p.created_at DESC
-      `,
-      { userId, mostLikedCategory }
-    );
-
-    let topCategoryPosts = topCategoryPostsResult.records.map((record) => {
+    const fillerPosts = fillerResult.records.map((record) => {
       const rawPost = record.get("p").properties;
-      const rawUser = record.get("author").properties;
+      const rawUser = record.get("s").properties;
 
       return {
         ...rawPost,
@@ -249,55 +287,7 @@ export const getDiscoverFeedService = async (userId: string): Promise<any[]> => 
       };
     });
 
-    // Track the post IDs to avoid duplicates in random posts
-    const topCategoryPostIds = topCategoryPosts.map((post) => post.id);
-
-    // Step 4: If there are fewer than 20 posts, fill in with real random posts
-    if (topCategoryPosts.length < 20) {
-      const fillerResult = await session.run(
-        `
-        MATCH (s:User)-[:POSTED]->(randomPost:Post)
-        WHERE s.id <> $userId
-          AND s.privacy_level = 'public'
-          AND randomPost.is_deleted = false
-          AND NOT (s)-[:FRIENDS_WITH]-(:User {id: $userId})
-          AND NOT (s)<-[:SENT_FRIEND_REQUEST]-(:User {id: $userId})
-          AND NOT (s)-[:SENT_FRIEND_REQUEST]->(:User {id: $userId})
-          AND NOT randomPost.id IN $topCategoryPostIds // Exclude posts already fetched
-        RETURN randomPost, s
-        ORDER BY rand()
-        LIMIT $fill
-        `,
-        { userId, fill: neo4j.int(20 - topCategoryPosts.length), topCategoryPostIds }
-      );
-
-      // Map random posts with author details
-      const fillerPosts = fillerResult.records.map((r) => {
-        const rawPost = r.get("randomPost").properties;
-        const rawUser = r.get("s").properties;
-
-        return {
-          ...rawPost,
-          likes_count: toNumber(rawPost.likes_count),
-          comments_count: toNumber(rawPost.comments_count),
-          reposts_count: toNumber(rawPost.reposts_count),
-          created_at: timestampToDate(rawPost.created_at),
-          updated_at: timestampToDate(rawPost.updated_at),
-          author: {
-            id: rawUser.id,
-            name: `${rawUser.first_name} ${rawUser.last_name}`,
-            email: rawUser.email,
-            profile_picture: rawUser.profile_picture || "",
-          },
-        };
-      });
-
-      // Add random posts to top category posts
-      topCategoryPosts.push(...fillerPosts);
-    }
-
-    // Step 5: Return final posts (top category posts + random filler posts)
-    return topCategoryPosts.slice(0, 20); // Ensure only 20 posts are returned
+    return [...personalizedPosts, ...fillerPosts].slice(0, 20);
   } finally {
     await session.close();
   }
