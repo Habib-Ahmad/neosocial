@@ -1,33 +1,34 @@
-import { Toaster } from '@/components/ui/toaster';
-import { Toaster as Sonner } from '@/components/ui/sonner';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Home from './pages/Home';
-import Profile from './pages/Profile';
-import EditProfile from './pages/EditProfile';
-import PostView from './pages/PostView';
-import Friends from './pages/Friends';
-import Notifications from './pages/Notifications';
-import Layout from './components/Layout';
-import Groups from './pages/Groups';
-import CreateGroup from './pages/CreateGroup';
-import GroupView from './pages/GroupView';
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Home from "./pages/Home";
+import Profile from "./pages/Profile";
+import EditProfile from "./pages/EditProfile";
+import PostView from "./pages/PostView";
+import Friends from "./pages/Friends";
+import Notifications from "./pages/Notifications";
+import Layout from "./components/Layout";
+import Groups from "./pages/Groups";
+import CreateGroup from "./pages/CreateGroup";
+import GroupView from "./pages/GroupView";
 import EditGroup from './pages/EditGroup';
+import Messages from "./pages/Messages";
 
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-	const { user } = useAuth();
-	return user ? <>{children}</> : <Navigate to="/login" />;
+  const { user } = useAuth();
+  return user ? <>{children}</> : <Navigate to="/login" />;
 };
 
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
-	const { user } = useAuth();
-	return !user ? <>{children}</> : <Navigate to="/home" />;
+  const { user } = useAuth();
+  return !user ? <>{children}</> : <Navigate to="/home" />;
 };
 
 const App = () => (
@@ -126,6 +127,26 @@ const App = () => (
 								</ProtectedRoute>
 							}
 						/>
+            <Route
+              path="/messages"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Messages />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/messages/:userId"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Messages />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
 						<Route
 							path="/groups"
 							element={

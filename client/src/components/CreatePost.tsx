@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import React, { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
 	Select,
 	SelectContent,
@@ -14,9 +14,10 @@ import { Image, Send, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createPost, createGroupPost } from '@/api/posts';
+import { IMG_BASE_URL } from "@/api";
 
 interface CreatePostProps {
-	groupId?: string;
+  groupId?: string;
 }
 
 const CreatePost: React.FC<CreatePostProps> = ({ groupId }) => {

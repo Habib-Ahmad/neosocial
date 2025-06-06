@@ -1,4 +1,3 @@
-import { get } from 'http';
 import { searchUsers } from './auth';
 
 export const urls = {
@@ -60,4 +59,14 @@ export const urls = {
 			`/groups/${groupId}/remove/${memberId}`,
 		updateGroup: (groupId: string) => `/groups/${groupId}`, // <-- Add this line for update group
 	},
+   messaging: {
+    getUserConversations: "/messages",
+    getConversation: (id: string) => `/messages/${id}`,
+    sendMessage: (conversationId: string) =>
+      `/messages/${conversationId}/messages`,
+    getConversationMessages: (conversationId: string) =>
+      `/messages/${conversationId}/messages`,
+    markConversationAsRead: (conversationId: string) =>
+      `/messages/${conversationId}/read`,
+  },
 };

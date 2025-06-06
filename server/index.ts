@@ -16,28 +16,69 @@ const app: Express = express();
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
   cors: {
-    origin: ["http://localhost:3000", "http://localhost:3001"],
+    origin: ["http://localhost:8080", "http://localhost:8081"],
     credentials: true,
   },
 });
 
 // Socket.IO logic
+export const userSocketMap: Record<string, string> = {}; // userId -> socketId
+export const onlineUsers: Record<string, string> = {}; // userId -> socketId
+
 io.on("connection", (socket) => {
   console.log(`🔌 Socket connected: ${socket.id}`);
 
+  const userId = socket.handshake.auth?.userId;
+  if (!userId) {
+    console.warn("⚠️ Missing userId in handshake");
+    socket.disconnect();
+    return;
+  }
+
+  onlineUsers[userId] = socket.id;
+  userSocketMap[userId] = socket.id;
+  console.log(`🟢 ${userId} is online`);
+  socket.emit("online_users", Object.keys(onlineUsers));
+  io.emit("user_online", userId);
+
   socket.on("join", (conversationId: string) => {
+    if (!conversationId) return;
     socket.join(conversationId);
-    console.log(`📥 Joined conversation ${conversationId}`);
+    console.log(`📥 ${userId} joined conversation ${conversationId}`);
   });
 
   socket.on("send_message", async (data) => {
     const { senderId, conversationId, content } = data;
-    const message = await sendMessageService(senderId, conversationId, content);
-    io.to(conversationId).emit("new_message", message);
+    if (!content?.trim() || !senderId || !conversationId) return;
+
+    try {
+      const { message, receiverId } = await sendMessageService(senderId, conversationId, content);
+
+      io.to(conversationId).emit("new_message", message);
+
+      const receiverSocketId = userSocketMap[receiverId];
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit("update_conversations");
+      }
+    } catch (err) {
+      console.error("❌ Message send failed:", err);
+      socket.emit("error_message", "Message failed to send");
+    }
   });
 
   socket.on("disconnect", () => {
     console.log(`❌ Socket disconnected: ${socket.id}`);
+
+    const userIdToRemove = Object.entries(onlineUsers).find(
+      ([, socketId]) => socketId === socket.id
+    )?.[0];
+
+    if (userIdToRemove) {
+      delete onlineUsers[userIdToRemove];
+      delete userSocketMap[userIdToRemove];
+      console.log(`🔴 ${userIdToRemove} went offline`);
+      io.emit("user_offline", userIdToRemove);
+    }
   });
 });
 

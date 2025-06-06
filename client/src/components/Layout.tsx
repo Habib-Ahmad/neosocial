@@ -1,14 +1,3 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Home, User, Users, Bell, LogOut, GroupIcon } from 'lucide-react';
-
-interface LayoutProps {
-	children: React.ReactNode;
-}
-
-const Layout: React.FC<LayoutProps> = ({ children }) => {
 	const { user, logout } = useAuth();
 	const location = useLocation();
 
@@ -27,7 +16,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 							NeoSocial
 						</Link>
 
-						<nav className="hidden md:flex items-center space-x-6">
+						<nav className="hidden lg:flex items-center space-x-6">
 							<Link
 								to="/home"
 								className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all ${
@@ -64,17 +53,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 								<span>Friends</span>
 							</Link>
 
-							<Link
-								to="/notifications"
-								className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all ${
-									isActive('/notifications')
-										? 'bg-purple-100 text-purple-700'
-										: 'text-gray-600 hover:text-purple-600 hover:bg-purple-50'
-								}`}
-							>
-								<Bell size={20} />
-								<span>Notifications</span>
-							</Link>
+							{/* <Link
+                to="/notifications"
+                className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all ${
+                  isActive("/notifications")
+                    ? "bg-purple-100 text-purple-700"
+                    : "text-gray-600 hover:text-purple-600 hover:bg-purple-50"
+                }`}
+              >
+                <Bell size={20} />
+                <span>Notifications</span>
+              </Link> */}
 							<Link
 								to="/groups"
 								className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all ${
@@ -117,7 +106,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 			<main className="max-w-6xl mx-auto px-4 py-6">{children}</main>
 
 			{/* Mobile Navigation */}
-			<nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-purple-100">
+			<nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-purple-100">
 				<div className="flex justify-around py-3">
 					<Link
 						to="/home"
@@ -148,16 +137,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 						<Users size={20} />
 						<span className="text-xs">Friends</span>
 					</Link>
+          
+          <Link
+            to="/groups"
+            className={`flex flex-col items-center space-y-1 px-3 py-2 rounded-lg transition-all ${
+              isActive("/groups") ? "text-purple-600" : "text-gray-600"
+            }`}
+          >
+            <GroupIcon size={20} />
+            <span className="text-xs">Groups</span>
+          </Link>
 
-					<Link
-						to="/notifications"
-						className={`flex flex-col items-center space-y-1 px-3 py-2 rounded-lg transition-all ${
-							isActive('/notifications') ? 'text-purple-600' : 'text-gray-600'
-						}`}
-					>
-						<Bell size={20} />
-						<span className="text-xs">Notifications</span>
-					</Link>
+					{/* <Link
+            to="/notifications"
+            className={`flex flex-col items-center space-y-1 px-3 py-2 rounded-lg transition-all ${
+              isActive("/notifications") ? "text-purple-600" : "text-gray-600"
+            }`}
+          >
+            <Bell size={20} />
+            <span className="text-xs">Notifications</span>
+          </Link> */}
 				</div>
 			</nav>
 		</div>

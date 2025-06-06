@@ -1,4 +1,3 @@
-
 export interface Post {
   id: string;
   content: string;
@@ -19,13 +18,13 @@ export interface Friend {
   id: string;
   name: string;
   avatar: string;
-  status: 'online' | 'offline';
+  status: "online" | "offline";
   mutualFriends: number;
 }
 
 export interface Notification {
   id: string;
-  type: 'like' | 'comment' | 'friend_request' | 'mention';
+  type: "like" | "comment" | "friend_request" | "mention";
   message: string;
   time: string;
   read: boolean;
@@ -44,6 +43,26 @@ export interface FriendRequest {
     name: string;
     avatar: string;
   };
-  status: 'pending' | 'accepted' | 'rejected';
+  status: "pending" | "accepted" | "rejected";
   createdAt: string;
+}
+
+export interface Message {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  content: string;
+  createdAt: string;
+  read: boolean;
+}
+
+export interface Conversation {
+  id: string;
+  participantId: string;
+  participantName: string;
+  participantAvatar: string;
+  lastMessage: string;
+  lastMessageTime: string;
+  unreadCount: number;
+  online: boolean;
 }
