@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
 	Select,
 	SelectContent,
@@ -14,10 +14,11 @@ import { Image, Send, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createPost, createGroupPost } from '@/api/posts';
-import { IMG_BASE_URL } from "@/api";
+import { IMG_BASE_URL } from '@/api';
+import { resolveImageUrl } from '@/lib/utils';
 
 interface CreatePostProps {
-  groupId?: string;
+	groupId?: string;
 }
 
 const CreatePost: React.FC<CreatePostProps> = ({ groupId }) => {
@@ -113,7 +114,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ groupId }) => {
 				<div className="flex items-center space-x-3">
 					{user?.profile_picture && (
 						<img
-							src={`http://localhost:5000${user.profile_picture}`}
+							src={resolveImageUrl(user.profile_picture)}
 							alt={user.first_name}
 							className="w-10 h-10 rounded-full border-2 border-purple-200"
 						/>
@@ -145,7 +146,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ groupId }) => {
 									className="relative w-24 h-24 rounded border border-purple-200 overflow-hidden"
 								>
 									<img
-										src={item.url}
+										src={resolveImageUrl(item.url)}
 										alt={`preview-${idx}`}
 										className="w-full h-full object-cover"
 									/>

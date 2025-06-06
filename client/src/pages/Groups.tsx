@@ -15,6 +15,7 @@ import {
 	cancelJoinRequest,
 	suggestGroups,
 } from '@/api/groups';
+import { resolveImageUrl } from '@/lib/utils';
 
 const Groups: React.FC = () => {
 	const [searchTerm, setSearchTerm] = useState('');
@@ -164,10 +165,7 @@ const Groups: React.FC = () => {
 										<CardContent className="p-4">
 											<div className="flex items-center space-x-4">
 												<img
-													src={
-														`http://localhost:5000${group.cover_image}` ||
-														'/default_group.png'
-													}
+													src={resolveImageUrl(group.cover_image)}
 													className="w-12 h-12 rounded-full border-2 border-purple-200"
 												/>
 												<div>
@@ -213,11 +211,7 @@ const Groups: React.FC = () => {
 									>
 										<CardContent className="p-4 flex items-center space-x-4">
 											<img
-												src={
-													sender.profile_picture
-														? `http://localhost:5000${sender.profile_picture}`
-														: '/default_profile.png'
-												}
+												src={resolveImageUrl(sender.profile_picture)}
 												alt={sender.first_name}
 												className="w-12 h-12 rounded-full border-2 border-purple-200"
 											/>
@@ -272,11 +266,7 @@ const Groups: React.FC = () => {
 										<CardContent className="p-4 flex items-center justify-between space-x-4">
 											<div className="flex items-center space-x-4">
 												<img
-													src={
-														group.cover_image
-															? `http://localhost:5000${group.cover_image}`
-															: '/default_group.png'
-													}
+													src={resolveImageUrl(group.cover_image)}
 													alt={group.name}
 													className="w-12 h-12 rounded-full border-2 border-purple-200"
 												/>
@@ -319,7 +309,7 @@ const Groups: React.FC = () => {
 								<CardContent className="p-4 flex items-center justify-between">
 									<div className="flex items-center space-x-4">
 										<img
-											src={`http://localhost:5000${group.cover_image}`}
+											src={resolveImageUrl(group.cover_image)}
 											className="w-12 h-12 rounded-full border-2 border-purple-200"
 										/>
 										<div>
@@ -375,10 +365,7 @@ const Groups: React.FC = () => {
 									<CardContent className="p-4 flex items-center justify-between">
 										<div className="flex items-center space-x-4">
 											<img
-												src={
-													`http://localhost:5000${group.cover_image}` ||
-													'/default_group.png'
-												}
+												src={resolveImageUrl(group.cover_image)}
 												alt={group.name}
 												className="w-12 h-12 rounded-full border-2 border-purple-200"
 											/>

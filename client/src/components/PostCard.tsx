@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { togglePostLike, deletePostService } from '@/api/posts'; // Assuming you have deletePostService in API
 import { useAuth } from '@/contexts/AuthContext';
+import { resolveImageUrl } from '@/lib/utils';
 
 interface PostCardProps {
 	post: any; // Post type adjusted according to your data structure
@@ -98,7 +99,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, groupName }) => {
 				<div className="flex items-center justify-between">
 					<div className="flex items-center space-x-3">
 						<img
-							src={`http://localhost:5000${post.author.profile_picture}`}
+							src={resolveImageUrl(post.author.profile_picture)}
 							alt={post.author.name}
 							className="w-10 h-10 rounded-full border-2 border-purple-200"
 						/>
@@ -154,7 +155,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, groupName }) => {
 							{post.media_urls.map((url, index) => (
 								<img
 									key={index}
-									src={`http://localhost:5000${url}`}
+									src={resolveImageUrl(url)}
 									alt={`Post media ${index + 1}`}
 									className="w-40 h-40 object-cover rounded border border-purple-200"
 								/>

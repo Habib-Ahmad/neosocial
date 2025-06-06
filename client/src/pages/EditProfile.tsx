@@ -9,8 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { updateUser } from '@/api/auth';
-import { User } from '@/interface/User';
+import { resolveImageUrl } from '@/lib/utils';
 
+import { User } from '@/interface/User';
+// Adjust the import based on your project structure
 const EditProfile: React.FC = () => {
 	const { user, updateProfile } = useAuth();
 	const navigate = useNavigate();
@@ -110,7 +112,7 @@ const EditProfile: React.FC = () => {
 						{/* Avatar Section */}
 						<div className="flex items-center space-x-4">
 							<img
-								src={`http://localhost:5000${formData.profile_picture}`}
+								src={resolveImageUrl(formData.profile_picture)}
 								alt="Profile"
 								className="w-20 h-20 rounded-full border-4 border-purple-200"
 							/>

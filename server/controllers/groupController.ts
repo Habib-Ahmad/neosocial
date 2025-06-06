@@ -31,7 +31,9 @@ export const createGroup = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const cover_image = req.file ? `/uploads/groups/${req.file.filename}` : null;
+    const cover_image = req.file
+      ? `/uploads/groups/${req.file.filename}`
+      : "/uploads/groups/group.jpg";
 
     const group = await createGroupService(creatorId, {
       name,
