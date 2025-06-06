@@ -15,11 +15,16 @@
 
 ## 📁 Folder Structure
 
+```
 root/
 │
 ├── client/ # React frontend (TypeScript)
 ├── server/ # Node.js backend (Express + TypeScript)
 └── package.json # Runs both client and server via concurrently
+├── README.md # Project documentation
+├── LICENSE # Project license
+└── db-schema.cypher # Neo4j database schema file
+```
 
 ---
 
@@ -27,9 +32,10 @@ root/
 
 1. **Clone the repository**
 
-````bash
+```bash
 git clone https://github.com/yourusername/NeoSocial.git
 cd NeoSocial
+```
 
 2. **Install dependencies**
 
@@ -39,7 +45,7 @@ npm install
 
 cd ../server
 npm install
-````
+```
 
 3. **Set up Neo4j**
 
@@ -138,3 +144,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ![Home Page](image.png)
 ![Profile Page](image-1.png)
 ![Messaging](image-2.png)
+
+```
+
+```
