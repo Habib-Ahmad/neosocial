@@ -1,24 +1,24 @@
-import React from "react";
-import { useParams, Link } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Edit, Calendar, Users, FileText } from "lucide-react";
-import PostCard from "@/components/PostCard";
-import { User } from "@/interface/User";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import React from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Edit, Calendar, Users, FileText } from 'lucide-react';
+import PostCard from '@/components/PostCard';
+import { User } from '@/interface/User';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  getUserById,
-  getUserFriends,
-  sendFriendRequest,
-  removeFriend,
-  cancelFriendRequest,
-} from "@/api/auth";
-import { Post } from "@/interface/Post";
-import { getPostsByUserId } from "@/api/posts";
-import { useToast } from "@/hooks/use-toast";
-import { IMG_BASE_URL } from "@/api";
+	getUserById,
+	getUserFriends,
+	sendFriendRequest,
+	removeFriend,
+	cancelFriendRequest,
+} from '@/api/auth';
+import { Post } from '@/interface/Post';
+import { getPostsByUserId } from '@/api/posts';
+import { useToast } from '@/hooks/use-toast';
+import { IMG_BASE_URL } from '@/api';
 
 function extractSignupDate(user: User): Date {
 	const { created_at } = user;
@@ -28,14 +28,14 @@ function extractSignupDate(user: User): Date {
 	const hour = created_at.hour.low;
 	const minute = created_at.minute.low;
 	const second = created_at.second.low;
-  return new Date(Date.UTC(year, month, day, hour, minute, second));
+	return new Date(Date.UTC(year, month, day, hour, minute, second));
 }
 
 const Profile: React.FC = () => {
-  const { userId } = useParams();
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
+	const { userId } = useParams();
+	const { user } = useAuth();
+	const queryClient = useQueryClient();
+	const { toast } = useToast();
 
 	// Fetch user data
 	const userData = useQuery<User>({
@@ -103,9 +103,9 @@ const Profile: React.FC = () => {
 	const isOwnProfile = !userId || userId === user?.id;
 	const profileUser = userData.data;
 
-  const joinDate = new Date(
-    profileUser?.created_at?.second?.low * 1000 || Date.now()
-  ).toISOString();
+	const joinDate = new Date(
+		profileUser?.created_at?.second?.low * 1000 || Date.now()
+	).toISOString();
 
 	if (userData.isLoading || userPosts.isLoading || friendsData.isLoading) {
 		return (
@@ -117,25 +117,25 @@ const Profile: React.FC = () => {
 		);
 	}
 
-  if (userData.isError || userPosts.isError || friendsData.isError) {
-    return (
-      <div className="max-w-4xl mx-auto">
-        <Card className="text-center p-8">
-          <p className="text-red-500">Error loading profile</p>
-        </Card>
-      </div>
-    );
-  }
+	if (userData.isError || userPosts.isError || friendsData.isError) {
+		return (
+			<div className="max-w-4xl mx-auto">
+				<Card className="text-center p-8">
+					<p className="text-red-500">Error loading profile</p>
+				</Card>
+			</div>
+		);
+	}
 
-  if (!profileUser) {
-    return (
-      <div className="max-w-4xl mx-auto">
-        <Card className="text-center p-8">
-          <p className="text-gray-500">User not found</p>
-        </Card>
-      </div>
-    );
-  }
+	if (!profileUser) {
+		return (
+			<div className="max-w-4xl mx-auto">
+				<Card className="text-center p-8">
+					<p className="text-gray-500">User not found</p>
+				</Card>
+			</div>
+		);
+	}
 
 	// Check if the profile is private and if the current user can see the posts
 	const isProfilePrivate =
@@ -173,114 +173,114 @@ const Profile: React.FC = () => {
 			<Card className="backdrop-blur-sm bg-white/80 border-purple-100 shadow-lg">
 				<CardHeader className="relative">
 					<div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 rounded-t-lg opacity-10"></div>
-          <div className="relative pt-8">
-            <div className="flex flex-col md:flex-row items-center md:items-end space-y-4 md:space-y-0 md:space-x-6">
-              {/* Avatar */}
-              <div className="relative">
-                <img
-                  src={
-                    profileUser.profile_picture.includes("http")
-                      ? profileUser.profile_picture
-                      : `${IMG_BASE_URL}${profileUser.profile_picture}`
-                  }
-                  alt={profileUser.first_name}
-                  className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white shadow-lg"
-                />
-              </div>
+					<div className="relative pt-8">
+						<div className="flex flex-col md:flex-row items-center md:items-end space-y-4 md:space-y-0 md:space-x-6">
+							{/* Avatar */}
+							<div className="relative">
+								<img
+									src={
+										profileUser.profile_picture.includes('http')
+											? profileUser.profile_picture
+											: `${IMG_BASE_URL}${profileUser.profile_picture}`
+									}
+									alt={profileUser.first_name}
+									className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white shadow-lg"
+								/>
+							</div>
 
-              {/* User Info */}
-              <div className="flex-1 text-center md:text-left">
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-                  {profileUser.first_name} {profileUser.last_name}
-                </h1>
-                {profileUser.bio && (
-                  <p className="text-gray-600 mt-2">{profileUser.bio}</p>
-                )}
+							{/* User Info */}
+							<div className="flex-1 text-center md:text-left">
+								<h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+									{profileUser.first_name} {profileUser.last_name}
+								</h1>
+								{profileUser.bio && (
+									<p className="text-gray-600 mt-2">{profileUser.bio}</p>
+								)}
 
-                <div className="flex flex-wrap justify-center md:justify-start items-center gap-4 mt-4 text-sm text-gray-500">
-                  <div className="flex items-center space-x-1">
-                    <Calendar size={16} />
-                    <span>
-                      Joined{" "}
-                      {extractSignupDate(profileUser).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <Users size={16} />
-                    <span>{profileUser.friend_count} friends</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <FileText size={16} />
-                    <span>{profileUser.post_count} posts</span>
-                  </div>
-                </div>
-              </div>
+								<div className="flex flex-wrap justify-center md:justify-start items-center gap-4 mt-4 text-sm text-gray-500">
+									<div className="flex items-center space-x-1">
+										<Calendar size={16} />
+										<span>
+											Joined{' '}
+											{extractSignupDate(profileUser).toLocaleDateString()}
+										</span>
+									</div>
+									<div className="flex items-center space-x-1">
+										<Users size={16} />
+										<span>{profileUser.friend_count} friends</span>
+									</div>
+									<div className="flex items-center space-x-1">
+										<FileText size={16} />
+										<span>{profileUser.post_count} posts</span>
+									</div>
+								</div>
+							</div>
 
-              {/* Action Buttons */}
-              <div className="flex space-x-2">
-                {isOwnProfile ? (
-                  <Link to="/edit-profile">
-                    <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
-                      <Edit size={16} className="mr-2" />
-                      Edit Profile
-                    </Button>
-                  </Link>
-                ) : (
-                  <>
-                    {profileUser?.is_friend && (
-                      <Button
-                        onClick={() =>
-                          handleRemoveFriend(
-                            profileUser.id,
-                            profileUser.first_name
-                          )
-                        }
-                        className="bg-red-100 text-red-700 hover:bg-red-200"
-                      >
-                        Remove Friend
-                      </Button>
-                    )}
-                    {profileUser?.sent_request && (
-                      <Button
-                        onClick={() =>
-                          handleCancelRequest(
-                            profileUser.id,
-                            profileUser.first_name
-                          )
-                        }
-                        className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
-                      >
-                        Cancel Request
-                      </Button>
-                    )}
-                    {!profileUser?.is_friend &&
-                      !profileUser?.sent_request &&
-                      !profileUser?.received_request && (
-                        <Button
-                          onClick={() => sendRequest()}
-                          className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                        >
-                          Add Friend
-                        </Button>
-                      )}
-                    {profileUser.is_friend && (
-                      <Button
-                        asChild
-                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                      >
-                        <Link to={`/messages/${profileUser.id}`}>Message</Link>
-                      </Button>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
+							{/* Action Buttons */}
+							<div className="flex space-x-2">
+								{isOwnProfile ? (
+									<Link to="/edit-profile">
+										<Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+											<Edit size={16} className="mr-2" />
+											Edit Profile
+										</Button>
+									</Link>
+								) : (
+									<>
+										{profileUser?.is_friend && (
+											<Button
+												onClick={() =>
+													handleRemoveFriend(
+														profileUser.id,
+														profileUser.first_name
+													)
+												}
+												className="bg-red-100 text-red-700 hover:bg-red-200"
+											>
+												Remove Friend
+											</Button>
+										)}
+										{profileUser?.sent_request && (
+											<Button
+												onClick={() =>
+													handleCancelRequest(
+														profileUser.id,
+														profileUser.first_name
+													)
+												}
+												className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
+											>
+												Cancel Request
+											</Button>
+										)}
+										{!profileUser?.is_friend &&
+											!profileUser?.sent_request &&
+											!profileUser?.received_request && (
+												<Button
+													onClick={() => sendRequest()}
+													className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+												>
+													Add Friend
+												</Button>
+											)}
+										{profileUser.is_friend && (
+											<Button
+												asChild
+												className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+											>
+												<Link to={`/messages/${profileUser.id}`}>Message</Link>
+											</Button>
+										)}
+									</>
+								)}
+							</div>
+						</div>
+					</div>
+				</CardHeader>
+			</Card>
 
 			{/* Profile Content */}
-			{isProfilePrivate && !isOwnProfile ? (
+			{isProfilePrivate && !isOwnProfile && !profileUser.is_friend ? (
 				<div className="text-center text-gray-500">Profile is private</div>
 			) : (
 				<Tabs defaultValue="posts" className="w-full">

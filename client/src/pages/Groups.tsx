@@ -335,7 +335,7 @@ const Groups: React.FC = () => {
 										</div>
 									</div>
 									<div className="text-sm text-right text-gray-500 min-w-[80px]">
-										{group.mutual_friends_count || 0} friend(s) in common
+										{group.mutual_friends_count || 0} friend(s) in the group
 									</div>
 								</CardContent>
 							</Card>
