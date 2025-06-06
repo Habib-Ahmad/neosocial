@@ -303,61 +303,6 @@ export const getDiscoverFeedService = async (userId: string): Promise<any[]> => 
   }
 };
 
-// export const getDiscoverFeedService = async (userId: string): Promise<Post[]> => {
-//   const session = driver.session();
-//   try {
-//     const result = await session.run(
-//       `
-//       MATCH (u:User {id: $userId})
-
-//       OPTIONAL MATCH (u)-[:LIKED]->(:Post)-[:IN_CATEGORY]->(c:Category)
-//       WITH u, collect(DISTINCT c.name) AS likedCategories
-
-//       MATCH (author:User)-[:POSTED]->(p:Post)-[:IN_CATEGORY]->(pc:Category)
-//       WHERE pc.name IN likedCategories AND author.privacy_level = 'public' AND p.is_deleted = false
-
-//       OPTIONAL MATCH (u)-[:FRIENDS_WITH]-(f:User)-[:LIKED]->(fLiked:Post)<-[:POSTED]-(fAuthor:User)
-//       WHERE fLiked.is_deleted = false AND fAuthor.privacy_level = 'public'
-
-//       WITH collect(p) + collect(fLiked) AS allPosts, u
-//       UNWIND allPosts AS post
-//       WITH DISTINCT post, u
-
-//       OPTIONAL MATCH (u)-[:LIKED]->(post)
-//       MATCH (author:User)-[:POSTED]->(post)
-
-//       RETURN post, author, EXISTS((u)-[:LIKED]->(post)) AS liked_by_me
-//       ORDER BY post.created_at DESC
-//       LIMIT 50
-//       `,
-//       { userId }
-//     );
-
-//     return result.records.map((record) => {
-//       const rawPost = record.get("post").properties;
-//       const rawUser = record.get("author").properties;
-//       const likedByMe = record.get("liked_by_me");
-
-//       return {
-//         ...rawPost,
-//         likes_count: toNumber(rawPost.likes_count),
-//         comments_count: toNumber(rawPost.comments_count),
-//         reposts_count: toNumber(rawPost.reposts_count),
-//         created_at: timestampToDate(rawPost.created_at),
-//         updated_at: timestampToDate(rawPost.updated_at),
-//         liked_by_me: likedByMe,
-//         author: {
-//           id: rawUser.id,
-//           name: `${rawUser.first_name} ${rawUser.last_name}`,
-//           email: rawUser.email,
-//           profile_picture: rawUser.profile_picture || "",
-//         },
-//       };
-//     });
-//   } finally {
-//     await session.close();
-//   }
-// };
 export const getLatestFeedService = async (viewerId: string): Promise<any[]> => {
   const session = driver.session();
   try {

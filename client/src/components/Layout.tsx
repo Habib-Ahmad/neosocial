@@ -1,3 +1,23 @@
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import {
+	Home,
+	User,
+	Users,
+	Bell,
+	LogOut,
+	GroupIcon,
+	MessageSquareText,
+} from 'lucide-react';
+import { IMG_BASE_URL } from '@/api';
+
+interface LayoutProps {
+	children: React.ReactNode;
+}
+
+const Layout: React.FC<LayoutProps> = ({ children }) => {
 	const { user, logout } = useAuth();
 	const location = useLocation();
 
@@ -75,6 +95,17 @@
 								<GroupIcon size={20} />
 								<span>Groups</span>
 							</Link>
+							<Link
+								to="/messages"
+								className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all ${
+									isActive('/messages')
+										? 'bg-purple-100 text-purple-700'
+										: 'text-gray-600 hover:text-purple-600 hover:bg-purple-50'
+								}`}
+							>
+								<MessageSquareText size={20} />
+								<span>Messages</span>
+							</Link>
 						</nav>
 
 						<div className="flex items-center space-x-4">
@@ -137,16 +168,27 @@
 						<Users size={20} />
 						<span className="text-xs">Friends</span>
 					</Link>
-          
-          <Link
-            to="/groups"
-            className={`flex flex-col items-center space-y-1 px-3 py-2 rounded-lg transition-all ${
-              isActive("/groups") ? "text-purple-600" : "text-gray-600"
-            }`}
-          >
-            <GroupIcon size={20} />
-            <span className="text-xs">Groups</span>
-          </Link>
+
+					<Link
+						to="/groups"
+						className={`flex flex-col items-center space-y-1 px-3 py-2 rounded-lg transition-all ${
+							isActive('/groups') ? 'text-purple-600' : 'text-gray-600'
+						}`}
+					>
+						<GroupIcon size={20} />
+						<span className="text-xs">Groups</span>
+					</Link>
+					<Link
+						to="/messages"
+						className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all ${
+							isActive('/messages')
+								? 'bg-purple-100 text-purple-700'
+								: 'text-gray-600 hover:text-purple-600 hover:bg-purple-50'
+						}`}
+					>
+						<MessageSquareText size={20} />
+						<span>Messages</span>
+					</Link>
 
 					{/* <Link
             to="/notifications"

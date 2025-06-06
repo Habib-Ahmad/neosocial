@@ -372,6 +372,9 @@ export const suggestFriendsService = async (userId: string, limit: number = 20):
       };
     });
 
+    // Track the suggested user IDs to exclude them from the random users
+    const suggestedUserIds = suggestions.map((user) => user.id);
+
     // Step 2: If fewer than limit, fill with random users not friends/requested
     if (suggestions.length < limit) {
       const fillerResult = await session.run(
@@ -381,12 +384,14 @@ export const suggestFriendsService = async (userId: string, limit: number = 20):
           AND NOT (s)-[:FRIENDS_WITH]-(:User {id: $userId})
           AND NOT (s)<-[:SENT_FRIEND_REQUEST]-(:User {id: $userId})
           AND NOT (s)-[:SENT_FRIEND_REQUEST]->(:User {id: $userId})
+          AND NOT s.id IN $suggestedUserIds // Exclude suggested users
         RETURN s
         ORDER BY rand()
         LIMIT $fill
         `,
         {
           userId,
+          suggestedUserIds,
           fill: neo4j.int(limit - suggestions.length),
         }
       );
@@ -411,6 +416,7 @@ export const suggestFriendsService = async (userId: string, limit: number = 20):
     await session.close();
   }
 };
+
 export const getUserGroupsService = async (userId: string) => {
   const result = await session.run(
     `
