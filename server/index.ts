@@ -16,7 +16,7 @@ const app: Express = express();
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
   cors: {
-    origin: ["http://localhost:8080", "http://localhost:8081"],
+    origin: ["https://neosocial.onrender.com"],
     credentials: true,
   },
 });
@@ -89,7 +89,7 @@ app.use(
   cors({
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
-    origin: ["http://localhost:8080", "http://localhost:8081"],
+    origin: ["https://neosocial.onrender.com"],
   })
 );
 
