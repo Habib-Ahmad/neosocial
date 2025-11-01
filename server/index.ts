@@ -10,6 +10,7 @@ import errorHandler from "./middleware/errorHandler";
 import { constants } from "./utils/constants";
 import { sendMessageService } from "./service/messagingService";
 import path from "path";
+import { driver } from "./db/neo4j";
 
 dotenv.config();
 const app: Express = express();
@@ -106,6 +107,22 @@ app.use("/api/notifications", notificationRouter);
 app.use("/uploads/posts", express.static(path.join(process.cwd(), "uploads", "posts")));
 app.use("/uploads/users", express.static(path.join(process.cwd(), "uploads", "users")));
 app.use("/uploads/groups", express.static(path.join(process.cwd(), "uploads", "groups")));
+
+app.use("/api/health", async (req: Request, res: Response) => {
+  try {
+    const session = driver.session();
+    const result = await session.run("RETURN 1 AS ok");
+    await session.close();
+
+    res.status(200).json({
+      status: "OK",
+      neo4j: result.records[0].get("ok"),
+    });
+  } catch (err) {
+    console.error("Neo4j health check failed:", err);
+    res.status(500).json({ status: "ERROR" });
+  }
+});
 
 // 404 handler
 app.use((req: Request, res: Response, next: NextFunction) => {
