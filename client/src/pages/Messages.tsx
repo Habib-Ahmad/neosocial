@@ -62,7 +62,7 @@ const Messages: React.FC = () => {
 		if (activeConversation && messages.length > 0) {
 			markAsRead.mutate(activeConversation.id);
 		}
-	}, [activeConversation, messages.length]);
+	}, [activeConversation, markAsRead, messages.length]);
 
 	const handleSelectConversation = (conv: Conversation) => {
 		setActiveConversation(conv);

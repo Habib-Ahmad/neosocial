@@ -11,7 +11,6 @@ import {
   GroupIcon,
   MessageSquareText,
 } from "lucide-react";
-import { IMG_BASE_URL } from "@/api";
 import { resolveImageUrl } from "@/lib/utils";
 
 interface LayoutProps {
@@ -151,7 +150,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </Link>
 
           <Link
-            to={`/profile/${user.id}`} // This will link to the specific user profile page
+            to={`/profile/${user.id}`}
             className={`flex flex-col items-center space-y-1 px-3 py-2 rounded-lg transition-all ${
               isActive("/profile") ? "text-purple-600" : "text-gray-600"
             }`}
@@ -179,16 +178,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <GroupIcon size={20} />
             <span className="text-xs">Groups</span>
           </Link>
+
           <Link
             to="/messages"
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all ${
-              isActive("/messages")
-                ? "bg-purple-100 text-purple-700"
-                : "text-gray-600 hover:text-purple-600 hover:bg-purple-50"
+            className={`flex flex-col items-center space-y-1 px-3 py-2 rounded-lg transition-all ${
+              isActive("/messages") ? "text-purple-600" : "text-gray-600"
             }`}
           >
             <MessageSquareText size={20} />
-            <span>Messages</span>
+            <span className="text-xs">Messages</span>
           </Link>
 
           {/* <Link
