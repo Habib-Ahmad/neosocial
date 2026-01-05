@@ -192,6 +192,7 @@ export const cancelFriendRequestService = async (
 
   return result.records.length > 0;
 };
+
 export const searchUsersService = async (
   query: string,
   status: string | null = null,
