@@ -13,7 +13,6 @@ export const axiosInstance = axios.create({
 
 axiosInstance.interceptors.request.use(
   (config) => {
-    // Add any request interceptors here, e.g., adding auth tokens
     const token = localStorage.getItem("token");
     if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;
@@ -21,7 +20,19 @@ axiosInstance.interceptors.request.use(
     return config;
   },
   (error) => {
-    // Handle request errors
+    return Promise.reject(error);
+  }
+);
+
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      localStorage.removeItem("tokenExpiry");
+      window.location.href = "/login";
+    }
     return Promise.reject(error);
   }
 );

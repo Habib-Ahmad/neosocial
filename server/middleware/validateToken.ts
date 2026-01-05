@@ -21,6 +21,9 @@ export const validateToken = (req: Request, res: Response, next: NextFunction) =
   } catch (error) {
     console.error("Token validation error:", error);
     res.status(401);
+    if (error instanceof jwt.TokenExpiredError) {
+      throw new Error("Token expired");
+    }
     throw new Error("Invalid token");
   }
 };

@@ -40,8 +40,46 @@ const CreatePost: React.FC<CreatePostProps> = ({ groupId }) => {
 			}
 			return await createPost(formData);
 		},
+		onMutate: async (formData) => {
+			// Cancel any outgoing queries to ensure optimistic update works
+			await queryClient.cancelQueries({ queryKey: ['posts/latest'] });
+			await queryClient.cancelQueries({ queryKey: ['posts/discover'] });
+
+			// Create optimistic post object with correct structure
+			const optimisticPost = {
+				id: Math.random().toString(36).substr(2, 9),
+				content: formData.get('content') as string,
+				category: formData.get('category') as string,
+				created_at: new Date().toISOString(),
+				updated_at: new Date().toISOString(),
+				is_deleted: false,
+				likes_count: 0,
+				comments_count: 0,
+				reposts_count: 0,
+				location: '',
+				liked_by_me: false,
+				group_name: '',
+				media_urls: [],
+				author: {
+					id: user?.id || '',
+					name: `${user?.first_name || ''} ${user?.last_name || ''}`.trim(),
+					email: user?.email || '',
+					profile_picture: user?.profile_picture || null,
+				},
+			} as any;
+
+			// Update both feeds with optimistic post
+			const previousLatest = queryClient.getQueryData(['posts/latest']);
+			queryClient.setQueryData(['posts/latest'], (old: any[] | undefined) => {
+				return old ? [optimisticPost, ...old] : [optimisticPost];
+			});
+
+			return { previousLatest };
+		},
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['posts'], exact: true });
+			// Refetch to ensure we have the real post with correct ID and timestamps
+			queryClient.invalidateQueries({ queryKey: ['posts/latest'] });
+			queryClient.invalidateQueries({ queryKey: ['posts/discover'] });
 			toast({
 				title: 'Post created!',
 				description: 'Your post has been shared successfully.',
@@ -51,7 +89,11 @@ const CreatePost: React.FC<CreatePostProps> = ({ groupId }) => {
 			setPreviewFiles([]);
 			setIsPosting(false);
 		},
-		onError: () => {
+		onError: (error, variables, context) => {
+			// Revert to previous state on error
+			if (context?.previousLatest) {
+				queryClient.setQueryData(['posts/latest'], context.previousLatest);
+			}
 			toast({
 				title: 'Error',
 				description: 'Failed to create post. Please try again.',
