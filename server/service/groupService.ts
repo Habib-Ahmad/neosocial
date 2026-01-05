@@ -1,7 +1,7 @@
 import { session, driver } from "../db/neo4j";
 import { v4 as uuidv4 } from "uuid";
-import { Post } from "../models/Post";
 import neo4j from "neo4j-driver";
+
 export const createGroupService = async (creatorId: string, groupData: any) => {
   const groupId = `group-${uuidv4()}`;
   const now = new Date().toISOString();
