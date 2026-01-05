@@ -24,6 +24,7 @@ export default {
     '^@/(.*)$': '<rootDir>/$1',
   },
   testTimeout: 10000,
+  maxWorkers: 1,
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {
       useESM: true,
