@@ -414,9 +414,7 @@ export const updateGroupService = async (groupId: string, userId: string, update
   try {
     const result = await session.run(
       `
-      MATCH (g:Group {id: $groupId})
-      OPTIONAL MATCH (admin:User {id: $userId})
-      WHERE (admin)-[:ADMIN_OF]->(g) // Ensure the user is an admin
+      MATCH (admin:User {id: $userId})-[:ADMIN_OF]->(g:Group {id: $groupId})
       SET ${setClauses}
       RETURN g
       `,
@@ -424,11 +422,11 @@ export const updateGroupService = async (groupId: string, userId: string, update
     );
 
     if (result.records.length === 0) {
-      return null; // If no group was found or user is not admin
+      return null;
     }
 
-    return result.records[0].get("g").properties; // Return updated group properties
+    return result.records[0].get("g").properties;
   } finally {
-    await session.close(); // Ensure the session is closed
+    await session.close();
   }
 };
