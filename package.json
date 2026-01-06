@@ -6,13 +6,16 @@
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "client": "cd client && npm run dev",
-    "server": "cd server && npm run dev"
+    "server": "cd server && npm run dev",
+    "test": "npx playwright test"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@types/node": "^25.0.3",
     "concurrently": "^9.1.2"
   }
 }
