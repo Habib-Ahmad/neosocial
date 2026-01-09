@@ -68,6 +68,11 @@ jobs:
       - name: Run server unit tests
         working-directory: ./server
         run: npm test
+        env:
+          NEO4J_URI: ${{ secrets.NEO4J_URI }}
+          NEO4J_USER: ${{ secrets.NEO4J_USER }}
+          NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+          TOKEN_SECRET: ${{ secrets.TOKEN_SECRET }}
 
   # Compiles TypeScript and bundles React for production
   build:
