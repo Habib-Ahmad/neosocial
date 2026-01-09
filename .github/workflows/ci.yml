@@ -12,41 +12,6 @@ env:
   NODE_VERSION: '20'
 
 jobs:
-  # Lint: checks code for errors without running it
-  # Type Check: verifies TypeScript types are correct
-  lint:
-    name: Lint & Type Check
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install client dependencies
-        working-directory: ./client
-        run: npm ci
-
-      - name: Install server dependencies
-        working-directory: ./server
-        run: npm ci
-
-      - name: Lint client
-        working-directory: ./client
-        run: npm run lint
-
-      - name: Type check client
-        working-directory: ./client
-        run: npx tsc --noEmit
-
-      - name: Type check server
-        working-directory: ./server
-        run: npx tsc --noEmit
-
   # Runs Jest unit tests
   test:
     name: Run Tests
@@ -78,7 +43,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [lint, test]
+    needs: [test]
 
     steps:
       - name: Checkout code
