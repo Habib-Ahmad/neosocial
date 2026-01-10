@@ -53,5 +53,45 @@ describe('Notification Integration Tests', () => {
     await driver.close();
   });
 
+  describe('GET /api/notifications/', () => {
+    it('should retrieve notifications for authenticated user', async () => {
+      // First, create a post and another user to generate a notification
+      const postResponse = await request(app)
+        .post('/api/posts/')
+        .set('Cookie', `token=${authToken}`)
+        .send({ content: 'Test post for notification', category: 'general' });
+
+      const postId = postResponse.body.post.id;
+
+      // Create another user who will like the post (creating a notification)
+      const hashedPassword = await bcrypt.hash('OtherPass123!', 10);
+      const otherUser = await createTestUser({
+        id: 'other-notif-user',
+        email: 'other@notiftest.com',
+        password: hashedPassword,
+        first_name: 'Other',
+        last_name: 'User',
+      });
+
+      const otherLoginResponse = await request(app)
+        .post('/api/users/login')
+        .send({ email: 'other@notiftest.com', password: 'OtherPass123!' });
+
+      // Create a notification by liking the post
+      await request(app)
+        .patch(`/api/posts/${postId}/like`)
+        .set('Cookie', `token=${otherLoginResponse.body.token}`);
+
+      // Now get the notifications for the original user
+      const response = await request(app)
+        .get('/api/notifications/')
+        .set('Cookie', `token=${authToken}`)
+        .expect(200);
+
+      expect(response.body).toHaveProperty('notifications');
+      expect(Array.isArray(response.body.notifications)).toBe(true);
+    });
+  });
+
   // Tests will be added one by one
 });
