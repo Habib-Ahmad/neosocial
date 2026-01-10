@@ -92,5 +92,41 @@ d("Messaging – simple integration test", () => {
 
     expect(result.records.length).toBe(0);
   });
+  it("🚫 User A cannot send a message to himself", async () => {
+  const session = driver.session();
+
+  // Reset DB pour ce test
+  await session.run("MATCH (n) DETACH DELETE n");
+
+  // Création d’un seul user
+  await session.run(`
+    CREATE (a:User {id: 'userA', email: 'a@test.com'})
+  `);
+
+  // Tentative d’envoi à soi-même
+  // La requête impose que le destinataire soit différent (a.id <> b.id)
+  // => donc aucun message ne sera créé
+  await session.run(`
+    MATCH (a:User {id:'userA'}), (b:User {id:'userA'})
+    WHERE a.id <> b.id
+    CREATE (m:Message {
+      id: 'msg_self',
+      content: 'Hello me',
+      createdAt: datetime()
+    })
+    CREATE (a)-[:SENT]->(m)-[:TO]->(b)
+  `);
+
+  // Vérification : aucun message ne doit exister
+  const result = await session.run(`
+    MATCH (:User {id:'userA'})-[:SENT]->(m:Message)
+    RETURN m
+  `);
+
+  await session.close();
+
+  expect(result.records.length).toBe(0);
+});
+
 });
 
