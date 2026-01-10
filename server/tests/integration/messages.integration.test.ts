@@ -52,9 +52,45 @@ d("Messaging – simple integration test", () => {
       RETURN m.content AS content
     `);
 
+    
     await session.close();
 
     expect(result.records.length).toBe(1);
     expect(result.records[0].get("content")).toBe("Hello B");
   });
+    it("User A cannot send a message to User B if they are not friends", async () => {
+    const session = driver.session();
+
+    // Reset DB pour ce test
+    await session.run("MATCH (n) DETACH DELETE n");
+
+    // Création des utilisateurs SANS relation FRIENDS_WITH
+    await session.run(`
+      CREATE (a:User {id: 'userA', email: 'a@test.com'})
+      CREATE (b:User {id: 'userB', email: 'b@test.com'})
+    `);
+
+    // Tentative d’envoi : le MATCH exige FRIENDS_WITH
+    // => comme ils ne sont PAS amis, rien ne sera créé
+    await session.run(`
+      MATCH (a:User {id:'userA'})-[:FRIENDS_WITH]->(b:User {id:'userB'})
+      CREATE (m:Message {
+        id: 'msg_not_allowed',
+        content: 'Hi',
+        createdAt: datetime()
+      })
+      CREATE (a)-[:SENT]->(m)-[:TO]->(b)
+    `);
+
+    // Vérification : aucun message ne doit exister
+    const result = await session.run(`
+      MATCH (:User {id:'userA'})-[:SENT]->(m:Message)-[:TO]->(:User {id:'userB'})
+      RETURN m
+    `);
+
+    await session.close();
+
+    expect(result.records.length).toBe(0);
+  });
 });
+
