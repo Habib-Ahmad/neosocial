@@ -106,4 +106,52 @@ describe('Notification Service', () => {
       );
     });
   });
+
+  describe('getUserNotificationsService', () => {
+    it('should retrieve all notifications for a user', async () => {
+      const mockNotifications = [
+        {
+          id: 'notif-1',
+          type: 'LIKE',
+          title: 'New Like',
+          message: 'Someone liked your post',
+          is_read: false,
+        },
+        {
+          id: 'notif-2',
+          type: 'COMMENT',
+          title: 'New Comment',
+          message: 'Someone commented on your post',
+          is_read: true,
+        },
+      ];
+
+      mockRun.mockResolvedValueOnce({
+        records: mockNotifications.map((notif) => ({
+          get: () => ({ properties: notif }),
+        })),
+      });
+
+      const result = await getUserNotificationsService('user123');
+
+      expect(result).toHaveLength(2);
+      expect(result[0].id).toBe('notif-1');
+      expect(result[1].id).toBe('notif-2');
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.stringContaining('MATCH (:User {id: $userId})-[:RECEIVES]->(n:Notification)'),
+        expect.objectContaining({ userId: 'user123' })
+      );
+    });
+
+    it('should return empty array when user has no notifications', async () => {
+      mockRun.mockResolvedValueOnce({
+        records: [],
+      });
+
+      const result = await getUserNotificationsService('user-no-notifs');
+
+      expect(result).toHaveLength(0);
+      expect(result).toEqual([]);
+    });
+  });
 });
