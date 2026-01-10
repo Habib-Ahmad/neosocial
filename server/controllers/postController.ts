@@ -15,6 +15,7 @@ import {
   getRepostedPostsByUserIdService,
   repostPostService,
 } from "../service/postService";
+import { checkProfanity } from "../utils/validators";
 export const createGroupPost = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
@@ -88,6 +89,16 @@ export const createPost = async (req: Request, res: Response): Promise<void> => 
     const { content, category } = req.body;
     if (!content?.trim() || !category?.trim()) {
       res.status(400).json({ message: "Content and category required" });
+      return;
+    }
+
+    // Check for profanity in content
+    const profanityCheck = checkProfanity(content);
+    if (!profanityCheck.isValid) {
+      res.status(400).json({
+        message: "Content validation failed",
+        errors: profanityCheck.errors,
+      });
       return;
     }
 

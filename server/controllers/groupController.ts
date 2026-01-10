@@ -14,7 +14,9 @@ import {
   suggestGroupsService,
   removeMemberService,
   updateGroupService,
+  getAllGroupNamesService,
 } from "../service/groupService";
+import { validateGroupName } from "../utils/validators";
 
 export const createGroup = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -28,6 +30,17 @@ export const createGroup = async (req: Request, res: Response): Promise<void> =>
 
     if (!name?.trim() || !description?.trim() || !category?.trim()) {
       res.status(400).json({ message: "Name, description, and category are required" });
+      return;
+    }
+
+    // Validate group name
+    const existingNames = await getAllGroupNamesService();
+    const nameValidation = validateGroupName(name, existingNames);
+    if (!nameValidation.isValid) {
+      res.status(400).json({
+        message: "Group name validation failed",
+        errors: nameValidation.errors,
+      });
       return;
     }
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { createGroup } from '@/api/groups';
+import { validateGroupName, getGroupNameCharCount } from '@/lib/validators';
 
 const CreateGroup: React.FC = () => {
 	const [formData, setFormData] = useState({
@@ -31,13 +32,31 @@ const CreateGroup: React.FC = () => {
 
 	const validateForm = () => {
 		const newErrors: { [key: string]: string } = {};
-		if (!formData.name.trim()) newErrors.name = 'Group name is required';
+
+		// Use TDD group name validator
+		const nameValidation = validateGroupName(formData.name);
+		if (!nameValidation.isValid) {
+			newErrors.name = nameValidation.errors[0];
+		}
+
 		if (!formData.description.trim())
 			newErrors.description = 'Description is required';
 		if (!formData.category.trim()) newErrors.category = 'Category is required';
 		setErrors(newErrors);
 		return Object.keys(newErrors).length === 0;
 	};
+
+	// Character count for group name
+	const charCount = useMemo(
+		() => getGroupNameCharCount(formData.name),
+		[formData.name]
+	);
+
+	// Real-time name validation
+	const nameValidation = useMemo(
+		() => (formData.name ? validateGroupName(formData.name) : null),
+		[formData.name]
+	);
 
 	const handleInputChange = (
 		e: React.ChangeEvent<
@@ -98,17 +117,35 @@ const CreateGroup: React.FC = () => {
 					<CardContent className="space-y-4">
 						{/* Group Name */}
 						<div className="space-y-2">
-							<Label htmlFor="name">Group Name</Label>
+							<div className="flex justify-between items-center">
+								<Label htmlFor="name">Group Name</Label>
+								<span
+									className={`text-xs ${
+										charCount.isOver ? 'text-red-500' : 'text-gray-500'
+									}`}
+								>
+									{charCount.current}/{charCount.max}
+								</span>
+							</div>
 							<Input
 								id="name"
 								name="name"
 								placeholder="NeoSocial Book Club"
 								value={formData.name}
 								onChange={handleInputChange}
-								className={errors.name ? 'border-red-500' : ''}
+								className={
+									errors.name || (nameValidation && !nameValidation.isValid)
+										? 'border-red-500'
+										: ''
+								}
 							/>
 							{errors.name && (
 								<p className="text-sm text-red-500">{errors.name}</p>
+							)}
+							{!errors.name && nameValidation && !nameValidation.isValid && (
+								<p className="text-sm text-orange-500">
+									{nameValidation.errors[0]}
+								</p>
 							)}
 						</div>
 

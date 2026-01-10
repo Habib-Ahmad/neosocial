@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,12 @@ import {
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { registerUser } from '@/api/auth';
+import {
+	validatePassword,
+	getPasswordStrength,
+	PASSWORD_RULES,
+} from '@/lib/validators';
+import { Check, X } from 'lucide-react';
 
 const Register: React.FC = () => {
 	const [formData, setFormData] = useState({
@@ -43,11 +49,13 @@ const Register: React.FC = () => {
 		} else if (!/\S+@\S+\.\S+/.test(formData.email)) {
 			newErrors.email = 'Email is invalid';
 		}
-		if (!formData.password) {
-			newErrors.password = 'Password is required';
-		} else if (formData.password.length < 6) {
-			newErrors.password = 'Password must be at least 6 characters';
+
+		// Use TDD password validator
+		const passwordValidation = validatePassword(formData.password);
+		if (!passwordValidation.isValid) {
+			newErrors.password = passwordValidation.errors[0];
 		}
+
 		if (formData.password !== formData.confirmPassword) {
 			newErrors.confirmPassword = 'Passwords do not match';
 		}
@@ -55,6 +63,12 @@ const Register: React.FC = () => {
 		setErrors(newErrors);
 		return Object.keys(newErrors).length === 0;
 	};
+
+	// Password strength calculation
+	const passwordStrength = useMemo(
+		() => getPasswordStrength(formData.password),
+		[formData.password]
+	);
 
 	const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const { name, value } = e.target;
@@ -190,15 +204,73 @@ const Register: React.FC = () => {
 								placeholder="Enter your password"
 							/>
 							<button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-9 text-sm text-gray-500 hover:text-gray-700"
-                tabIndex={-1}
-              >
-                {showPassword ? "Hide" : "Show"}
-              </button>
+								type="button"
+								onClick={() => setShowPassword(!showPassword)}
+								className="absolute right-3 top-9 text-sm text-gray-500 hover:text-gray-700"
+								tabIndex={-1}
+							>
+								{showPassword ? 'Hide' : 'Show'}
+							</button>
 							{errors.password && (
 								<p className="text-sm text-red-500">{errors.password}</p>
+							)}
+
+							{/* Password Strength Indicator */}
+							{formData.password && (
+								<div className="mt-2 space-y-2">
+									<div className="flex items-center gap-2">
+										<div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+											<div
+												className={`h-full transition-all duration-300 ${
+													passwordStrength.color === 'red'
+														? 'bg-red-500'
+														: passwordStrength.color === 'orange'
+														? 'bg-orange-500'
+														: passwordStrength.color === 'yellow'
+														? 'bg-yellow-500'
+														: 'bg-green-500'
+												}`}
+												style={{ width: `${passwordStrength.score}%` }}
+											/>
+										</div>
+										<span
+											className={`text-xs font-medium ${
+												passwordStrength.color === 'red'
+													? 'text-red-500'
+													: passwordStrength.color === 'orange'
+													? 'text-orange-500'
+													: passwordStrength.color === 'yellow'
+													? 'text-yellow-500'
+													: 'text-green-500'
+											}`}
+										>
+											{passwordStrength.label}
+										</span>
+									</div>
+									<div className="grid grid-cols-2 gap-1">
+										{PASSWORD_RULES.map((rule) => (
+											<div
+												key={rule.id}
+												className="flex items-center gap-1 text-xs"
+											>
+												{rule.test(formData.password) ? (
+													<Check className="w-3 h-3 text-green-500" />
+												) : (
+													<X className="w-3 h-3 text-gray-400" />
+												)}
+												<span
+													className={
+														rule.test(formData.password)
+															? 'text-green-600'
+															: 'text-gray-500'
+													}
+												>
+													{rule.message}
+												</span>
+											</div>
+										))}
+									</div>
+								</div>
 							)}
 						</div>
 
@@ -214,13 +286,13 @@ const Register: React.FC = () => {
 								placeholder="Confirm your password"
 							/>
 							<button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-9 text-sm text-gray-500 hover:text-gray-700"
-                tabIndex={-1}
-              >
-                {showPassword ? "Hide" : "Show"}
-              </button>
+								type="button"
+								onClick={() => setShowPassword(!showPassword)}
+								className="absolute right-3 top-9 text-sm text-gray-500 hover:text-gray-700"
+								tabIndex={-1}
+							>
+								{showPassword ? 'Hide' : 'Show'}
+							</button>
 							{errors.confirmPassword && (
 								<p className="text-sm text-red-500">{errors.confirmPassword}</p>
 							)}

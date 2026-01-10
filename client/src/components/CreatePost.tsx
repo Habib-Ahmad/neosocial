@@ -10,12 +10,13 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/ui/select';
-import { Image, Send, X } from 'lucide-react';
+import { Image, Send, X, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createPost, createGroupPost } from '@/api/posts';
 import { IMG_BASE_URL } from '@/api';
 import { resolveImageUrl } from '@/lib/utils';
+import { checkProfanity } from '@/lib/validators';
 
 interface CreatePostProps {
 	groupId?: string;
@@ -25,6 +26,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ groupId }) => {
 	const [content, setContent] = useState('');
 	const [category, setCategory] = useState('');
 	const [isPosting, setIsPosting] = useState(false);
+	const [profanityWarning, setProfanityWarning] = useState<string | null>(null);
 	const [previewFiles, setPreviewFiles] = useState<
 		{ file: File; url: string }[]
 	>([]);
@@ -128,6 +130,17 @@ const CreatePost: React.FC<CreatePostProps> = ({ groupId }) => {
 		});
 	};
 
+	// Check for profanity when content changes
+	const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+		const newContent = e.target.value;
+		setContent(newContent);
+
+		const profanityCheck = checkProfanity(newContent);
+		setProfanityWarning(
+			profanityCheck.isValid ? null : profanityCheck.errors[0]
+		);
+	};
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 
@@ -135,6 +148,17 @@ const CreatePost: React.FC<CreatePostProps> = ({ groupId }) => {
 			toast({
 				title: 'Missing Fields',
 				description: 'Content and category are required.',
+				variant: 'destructive',
+			});
+			return;
+		}
+
+		// Check for profanity before submitting
+		const profanityCheck = checkProfanity(content);
+		if (!profanityCheck.isValid) {
+			toast({
+				title: 'Content Not Allowed',
+				description: profanityCheck.errors[0],
 				variant: 'destructive',
 			});
 			return;
@@ -174,10 +198,18 @@ const CreatePost: React.FC<CreatePostProps> = ({ groupId }) => {
 				<CardContent className="space-y-4">
 					<Textarea
 						value={content}
-						onChange={(e) => setContent(e.target.value)}
+						onChange={handleContentChange}
 						placeholder="What's happening?"
-						className="min-h-[100px] resize-none border-purple-100 focus:border-purple-300"
+						className={`min-h-[100px] resize-none border-purple-100 focus:border-purple-300 ${
+							profanityWarning ? 'border-red-500' : ''
+						}`}
 					/>
+					{profanityWarning && (
+						<div className="flex items-center gap-2 text-red-500 text-sm">
+							<AlertTriangle className="w-4 h-4" />
+							<span>{profanityWarning}</span>
+						</div>
+					)}
 
 					{/* Image Previews */}
 					{previewFiles.length > 0 && (
