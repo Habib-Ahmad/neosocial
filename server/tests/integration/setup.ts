@@ -1,4 +1,4 @@
-import { driver } from '../../db/neo4j';
+import { driver } from "../../db/neo4j";
 
 /**
  * Clean up test data before/after integration tests
@@ -15,6 +15,15 @@ export const cleanupTestData = async () => {
          OR n.username CONTAINS 'test'
          OR n.id CONTAINS 'test'
       DETACH DELETE n
+    `);
+
+    // Delete all test groups
+    await session.run(`
+      MATCH (g:Group)
+      WHERE g.name CONTAINS 'Test'
+         OR g.name CONTAINS 'test'
+         OR g.id CONTAINS 'test'
+      DETACH DELETE g
     `);
   } finally {
     await session.close();
@@ -58,7 +67,7 @@ export const createTestUser = async (userData: {
       }
     );
 
-    return result.records[0].get('u').properties;
+    return result.records[0].get("u").properties;
   } finally {
     await session.close();
   }
@@ -82,7 +91,7 @@ export const getTestUser = async (email: string) => {
       return null;
     }
 
-    return result.records[0].get('u').properties;
+    return result.records[0].get("u").properties;
   } finally {
     await session.close();
   }
