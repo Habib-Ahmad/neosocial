@@ -217,7 +217,7 @@ describe("Authentication Controller", () => {
       mockRequest = {
         body: {
           email: "test@example.com",
-          password: "PlainTextPassword",
+          password: "PlainText123",
           first_name: "Test",
           last_name: "User",
         },
@@ -234,7 +234,7 @@ describe("Authentication Controller", () => {
 
       await registerUser(mockRequest as Request, mockResponse as Response);
 
-      expect(bcrypt.hash).toHaveBeenCalledWith("PlainTextPassword", 10);
+      expect(bcrypt.hash).toHaveBeenCalledWith("PlainText123", 10);
       expect(createUser).toHaveBeenCalledWith(
         expect.objectContaining({
           password: "hashed-password-result",
