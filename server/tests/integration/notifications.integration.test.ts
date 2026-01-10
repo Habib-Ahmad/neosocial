@@ -93,5 +93,51 @@ describe('Notification Integration Tests', () => {
     });
   });
 
+  describe('PATCH /api/notifications/:id/read', () => {
+    it('should mark a notification as read', async () => {
+      // First, create a notification by creating a post and having another user like it
+      const postResponse = await request(app)
+        .post('/api/posts/')
+        .set('Cookie', `token=${authToken}`)
+        .send({ content: 'Another test post', category: 'general' });
+
+      const postId = postResponse.body.post.id;
+
+      const hashedPassword = await bcrypt.hash('LikerPass123!', 10);
+      await createTestUser({
+        id: 'liker-user',
+        email: 'liker@notiftest.com',
+        password: hashedPassword,
+        first_name: 'Liker',
+        last_name: 'User',
+      });
+
+      const likerLoginResponse = await request(app)
+        .post('/api/users/login')
+        .send({ email: 'liker@notiftest.com', password: 'LikerPass123!' });
+
+      await request(app)
+        .patch(`/api/posts/${postId}/like`)
+        .set('Cookie', `token=${likerLoginResponse.body.token}`);
+
+      // Get notifications to find the notification ID
+      const notificationsResponse = await request(app)
+        .get('/api/notifications/')
+        .set('Cookie', `token=${authToken}`);
+
+      const notifications = notificationsResponse.body.notifications;
+      expect(notifications.length).toBeGreaterThan(0);
+      notificationId = notifications[0].id;
+
+      // Mark the notification as read
+      const response = await request(app)
+        .patch(`/api/notifications/${notificationId}/read`)
+        .set('Cookie', `token=${authToken}`)
+        .expect(200);
+
+      expect(response.body.message).toBe('Notification marked as read');
+    });
+  });
+
   // Tests will be added one by one
 });
