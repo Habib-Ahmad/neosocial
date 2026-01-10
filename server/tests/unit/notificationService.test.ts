@@ -68,5 +68,42 @@ describe('Notification Service', () => {
         })
       );
     });
+
+    it('should create a notification with metadata', async () => {
+      const mockNotification = {
+        id: 'notif-mock-uuid-123',
+        type: 'COMMENT',
+        title: 'New Comment',
+        message: 'Jane commented on your post',
+        is_read: false,
+        action_url: '/posts/post456',
+        metadata: JSON.stringify({ commentId: 'comment789', postTitle: 'My Post' }),
+      };
+
+      mockRun.mockResolvedValueOnce({
+        records: [{ get: () => ({ properties: mockNotification }) }],
+      });
+
+      const result = await createNotificationService({
+        recipientId: 'user123',
+        actorId: 'user789',
+        type: 'COMMENT',
+        title: 'New Comment',
+        message: 'Jane commented on your post',
+        targetId: 'post456',
+        targetLabel: 'Post',
+        action: 'COMMENTED',
+        actionUrl: '/posts/post456',
+        metadata: { commentId: 'comment789', postTitle: 'My Post' },
+      });
+
+      expect(result.metadata).toBeDefined();
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.stringContaining('CREATE (n:Notification'),
+        expect.objectContaining({
+          metadata: JSON.stringify({ commentId: 'comment789', postTitle: 'My Post' }),
+        })
+      );
+    });
   });
 });
