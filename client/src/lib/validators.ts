@@ -69,7 +69,8 @@ export const getPasswordStrength = (
 // Feature 2: Profanity Filter
 // ============================================
 
-const PROFANE_WORDS = ['damn', 'hell', 'ass', 'crap'];
+// Keep in sync with server/utils/validators.ts
+const PROFANE_WORDS = ['damn', 'hell', 'ass', 'crap', 'shit', 'merde'];
 
 const LEET_SPEAK_MAP: Record<string, string> = {
 	'@': 'a',
