@@ -139,5 +139,13 @@ describe('Notification Integration Tests', () => {
     });
   });
 
-  // Tests will be added one by one
+  describe('GET /api/notifications/ - Authentication', () => {
+    it('should reject requests without authentication', async () => {
+      const response = await request(app)
+        .get('/api/notifications/')
+        .expect(401);
+
+      expect(response.body).toHaveProperty('error');
+    });
+  });
 });
