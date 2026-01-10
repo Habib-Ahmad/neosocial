@@ -1,17 +1,19 @@
 export default {
-  preset: 'ts-jest',
-  testEnvironment: 'node',
-  extensionsToTreatAsEsm: ['.ts'],
-  roots: ['<rootDir>'],
-  testMatch: ['**/tests/**/*.test.ts'],
-  moduleFileExtensions: ['ts', 'js', 'json'],
+  preset: "ts-jest",
+  testEnvironment: "node",
+  extensionsToTreatAsEsm: [".ts"],
+  roots: ["<rootDir>"],
+  testMatch: ["**/tests/**/*.test.ts"],
+  moduleFileExtensions: ["ts", "js", "json"],
   collectCoverageFrom: [
-    'service/**/*.ts',
-    'controllers/**/*.ts',
-    'utils/**/*.ts',
-    '!**/node_modules/**',
-    '!**/tests/**',
+    "service/**/*.ts",
+    "controllers/**/*.ts",
+    "utils/**/*.ts",
+    "!**/node_modules/**",
+    "!**/tests/**",
   ],
+  coverageDirectory: "./coverage",
+  coverageReporters: ["text", "lcov", "html"],
   coverageThreshold: {
     global: {
       branches: 60,
@@ -21,16 +23,19 @@ export default {
     },
   },
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/$1',
+    "^@/(.*)$": "<rootDir>/$1",
   },
   testTimeout: 10000,
   maxWorkers: 1,
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', {
-      useESM: true,
-      tsconfig: {
-        module: 'ES2020',
+    "^.+\\.tsx?$": [
+      "ts-jest",
+      {
+        useESM: true,
+        tsconfig: {
+          module: "ES2020",
+        },
       },
-    }],
+    ],
   },
 };

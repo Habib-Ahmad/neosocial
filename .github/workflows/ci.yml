@@ -29,7 +29,7 @@ env:
   NODE_VERSION: '20'
 
 jobs:
-  # Runs Jest unit tests
+  # Runs Jest unit tests with reporting
   test:
     name: Run Tests
     runs-on: ubuntu-latest
@@ -47,14 +47,41 @@ jobs:
         working-directory: ./server
         run: npm ci
 
-      - name: Run server unit tests
+      - name: Run server unit tests with coverage
         working-directory: ./server
-        run: npm test
+        run: npm test -- --coverage --ci --reporters=default --reporters=jest-junit
         env:
           NEO4J_URI: ${{ secrets.NEO4J_URI }}
           NEO4J_USER: ${{ secrets.NEO4J_USER }}
           NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
           TOKEN_SECRET: ${{ secrets.TOKEN_SECRET }}
+          JEST_JUNIT_OUTPUT_DIR: ./reports
+          JEST_JUNIT_OUTPUT_NAME: junit.xml
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: ./server/reports/junit.xml
+          retention-days: 30
+
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: ./server/coverage
+          retention-days: 30
+
+      - name: Publish Test Results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Jest Test Results
+          path: ./server/reports/junit.xml
+          reporter: jest-junit
+          fail-on-error: false
 
   # Compiles TypeScript and bundles React for production
   build:
