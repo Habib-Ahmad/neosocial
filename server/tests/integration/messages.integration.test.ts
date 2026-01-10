@@ -190,6 +190,45 @@ it("Full messaging flow: friends can exchange messages", async () => {
   expect(result.records.length).toBe(1);
   expect(result.records[0].get("content")).toBe("Hello");
 });
+it("Users can exchange multiple messages in the same conversation", async () => {
+  const session = driver.session();
+
+  await session.run("MATCH (n) DETACH DELETE n");
+
+  // Create users + friendship
+  await session.run(`
+    CREATE (a:User {id:'userA'})
+    CREATE (b:User {id:'userB'})
+    CREATE (a)-[:FRIENDS_WITH]->(b)
+  `);
+
+  // Send multiple messages
+  await session.run(`
+    MATCH (a:User {id:'userA'})-[:FRIENDS_WITH]->(b:User {id:'userB'})
+    CREATE (m1:Message {content:'Hello', createdAt: datetime()})
+    CREATE (m2:Message {content:'How are you?', createdAt: datetime()})
+    CREATE (m3:Message {content:'See you later', createdAt: datetime()})
+    CREATE (a)-[:SENT]->(m1)-[:TO]->(b)
+    CREATE (a)-[:SENT]->(m2)-[:TO]->(b)
+    CREATE (a)-[:SENT]->(m3)-[:TO]->(b)
+  `);
+
+  // Read conversation
+  const result = await session.run(`
+    MATCH (:User {id:'userA'})-[:SENT]->(m:Message)-[:TO]->(:User {id:'userB'})
+    RETURN m.content AS content
+    ORDER BY m.createdAt ASC
+  `);
+
+  await session.close();
+
+  expect(result.records.length).toBe(3);
+  expect(result.records.map(r => r.get("content"))).toEqual([
+    "Hello",
+    "How are you?",
+    "See you later",
+  ]);
+});
 
 
 
