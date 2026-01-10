@@ -92,7 +92,7 @@ d("Messaging – simple integration test", () => {
 
     expect(result.records.length).toBe(0);
   });
-  it("🚫 User A cannot send a message to himself", async () => {
+  it("User A cannot send a message to himself", async () => {
   const session = driver.session();
 
   // Reset DB pour ce test
@@ -127,6 +127,40 @@ d("Messaging – simple integration test", () => {
 
   expect(result.records.length).toBe(0);
 });
+
+it("🚫 User A cannot send a message to a non-existing user", async () => {
+  const session = driver.session();
+
+  // Reset DB
+  await session.run("MATCH (n) DETACH DELETE n");
+
+  // Create ONLY User A
+  await session.run(`
+    CREATE (a:User {id: 'userA', email: 'a@test.com'})
+  `);
+
+  // Attempt to send message to non-existing userB
+  await session.run(`
+    MATCH (a:User {id:'userA'}), (b:User {id:'userB'})
+    CREATE (m:Message {
+      id: 'msg_invalid',
+      content: 'Hello ?',
+      createdAt: datetime()
+    })
+    CREATE (a)-[:SENT]->(m)-[:TO]->(b)
+  `);
+
+  // Check that NO message exists
+  const result = await session.run(`
+    MATCH (m:Message)
+    RETURN m
+  `);
+
+  await session.close();
+
+  expect(result.records.length).toBe(0);
+});
+
 
 });
 
