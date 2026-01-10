@@ -62,6 +62,17 @@ describe("Group Workflow Integration Tests", () => {
       .post("/api/users/login")
       .send({ email: "member@test.com", password: "MemberPass123!" });
     memberToken = login2.body.token;
+
+    // Create the test group in beforeAll to ensure it exists for all tests
+    const groupResponse = await request(app)
+      .post("/api/groups/")
+      .set("Cookie", `token=${adminToken}`)
+      .send({
+        name: testGroupName,
+        description: "A group for testing",
+        category: "general",
+      });
+    groupId = groupResponse.body.group.id;
   });
 
   afterAll(async () => {
@@ -71,19 +82,29 @@ describe("Group Workflow Integration Tests", () => {
 
   describe("POST /api/groups/", () => {
     it("should create a new group", async () => {
+      // Group already created in beforeAll, verify it exists
+      const response = await request(app)
+        .get(`/api/groups/${groupId}`)
+        .set("Cookie", `token=${adminToken}`)
+        .expect(200);
+
+      expect(response.body.group).toHaveProperty("id");
+      expect(response.body.group.name).toBe(testGroupName);
+    });
+
+    it("should create another new group", async () => {
       const response = await request(app)
         .post("/api/groups/")
         .set("Cookie", `token=${adminToken}`)
         .send({
-          name: testGroupName,
-          description: "A group for testing",
+          name: `Another Test Group ${Date.now()}`,
+          description: "Another group for testing",
           category: "general",
         })
         .expect(201);
 
       expect(response.body).toHaveProperty("group");
-      expect(response.body.group.name).toBe(testGroupName);
-      groupId = response.body.group.id;
+      expect(response.body.group.name).toContain("Another Test Group");
     });
 
     it("should reject group creation without authentication", async () => {
@@ -219,9 +240,24 @@ describe("Group Workflow Integration Tests", () => {
 
   describe("Join Request Rejection Flow", () => {
     it("should submit and reject a join request", async () => {
+      // Create a new user who hasn't interacted with the group yet
+      const hashedPassword = await bcrypt.hash("NewMemberPass123!", 10);
+      const newMember = await createTestUser({
+        id: `new-member-${Date.now()}`,
+        email: `newmember${Date.now()}@test.com`,
+        password: hashedPassword,
+        first_name: "New",
+        last_name: "Member",
+      });
+
+      const loginResponse = await request(app)
+        .post("/api/users/login")
+        .send({ email: newMember.email, password: "NewMemberPass123!" });
+      const newMemberToken = loginResponse.body.token;
+
       const joinResponse = await request(app)
         .post(`/api/groups/${groupId}/join`)
-        .set("Cookie", `token=${memberToken}`)
+        .set("Cookie", `token=${newMemberToken}`)
         .expect(201);
 
       const newRequestId = joinResponse.body.request.id;
@@ -237,16 +273,31 @@ describe("Group Workflow Integration Tests", () => {
 
   describe("DELETE /api/groups/:requestId/cancel", () => {
     it("should cancel a sent join request", async () => {
+      // Create another new user for cancel test
+      const hashedPassword = await bcrypt.hash("CancelMemberPass123!", 10);
+      const cancelMember = await createTestUser({
+        id: `cancel-member-${Date.now()}`,
+        email: `cancelmember${Date.now()}@test.com`,
+        password: hashedPassword,
+        first_name: "Cancel",
+        last_name: "Member",
+      });
+
+      const loginResponse = await request(app)
+        .post("/api/users/login")
+        .send({ email: cancelMember.email, password: "CancelMemberPass123!" });
+      const cancelMemberToken = loginResponse.body.token;
+
       const joinResponse = await request(app)
         .post(`/api/groups/${groupId}/join`)
-        .set("Cookie", `token=${memberToken}`)
+        .set("Cookie", `token=${cancelMemberToken}`)
         .expect(201);
 
       const newRequestId = joinResponse.body.request.id;
 
       const cancelResponse = await request(app)
         .delete(`/api/groups/${newRequestId}/cancel`)
-        .set("Cookie", `token=${memberToken}`)
+        .set("Cookie", `token=${cancelMemberToken}`)
         .expect(200);
 
       expect(cancelResponse.body.message).toContain("cancelled");
