@@ -18,6 +18,7 @@ import {
 import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
 import jwt from "jsonwebtoken";
+import { validatePassword } from "../utils/validators";
 
 export const registerUser = async (req: Request, res: Response) => {
   try {
@@ -33,6 +34,16 @@ export const registerUser = async (req: Request, res: Response) => {
       // !user.privacy_level
     ) {
       throw new Error("Please provide all required fields including privacy");
+    }
+
+    // Validate password strength
+    const passwordValidation = validatePassword(user.password);
+    if (!passwordValidation.isValid) {
+      res.status(400).json({
+        message: "Password validation failed",
+        errors: passwordValidation.errors,
+      });
+      return;
     }
 
     // // Ensure privacy is either 'public' or 'private'

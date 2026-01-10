@@ -2,6 +2,12 @@ import { session, driver } from "../db/neo4j";
 import { v4 as uuidv4 } from "uuid";
 import neo4j from "neo4j-driver";
 
+// Get all group names for uniqueness validation
+export const getAllGroupNamesService = async (): Promise<string[]> => {
+  const result = await session.run(`MATCH (g:Group) RETURN g.name as name`);
+  return result.records.map((record) => record.get("name"));
+};
+
 export const createGroupService = async (creatorId: string, groupData: any) => {
   const groupId = `group-${uuidv4()}`;
   const now = new Date().toISOString();

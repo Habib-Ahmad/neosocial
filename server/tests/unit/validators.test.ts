@@ -134,7 +134,9 @@ describe("Feature 3: Group Name Validator", () => {
     it("should reject name with special characters", () => {
       const result = validateGroupName("Group@Name!");
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Group name can only contain letters, numbers, spaces, and hyphens");
+      expect(result.errors).toContain(
+        "Group name can only contain letters, numbers, spaces, and hyphens"
+      );
     });
 
     it("should accept valid group name", () => {
