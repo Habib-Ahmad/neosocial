@@ -6,6 +6,14 @@ import { driver } from "../../db/neo4j";
 export const cleanupTestData = async () => {
   const session = driver.session();
   try {
+    // Delete all test posts first (to avoid orphan relationships)
+    await session.run(`
+      MATCH (p:Post)
+      WHERE p.id CONTAINS 'test'
+         OR p.content CONTAINS 'test'
+      DETACH DELETE p
+    `);
+
     // Delete all test users and their relationships
     await session.run(`
       MATCH (n)
@@ -14,6 +22,8 @@ export const cleanupTestData = async () => {
          OR n.email CONTAINS '@test.com'
          OR n.username CONTAINS 'test'
          OR n.id CONTAINS 'test'
+         OR n.id CONTAINS 'friend-'
+         OR n.id CONTAINS 'post-test'
       DETACH DELETE n
     `);
 

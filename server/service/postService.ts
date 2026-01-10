@@ -9,35 +9,43 @@ export const createPostService = async (userId: string, body: any): Promise<Post
   const now = new Date().toISOString();
 
   const session = driver.session();
-  const result = await session.run(
-    `
-    MATCH (u:User {id: $userId})
-    CREATE (p:Post {
-      id: $postId,
-      content: $content,
-      category: $category,
-      created_at: datetime($now),
-      updated_at: datetime($now),
-      is_deleted: false,
-      likes_count: 0,
-      comments_count: 0,
-      reposts_count: 0,
-      media_urls: $mediaUrls
-    })
-    CREATE (u)-[:POSTED]->(p)
-    RETURN p
-    `,
-    {
-      userId,
-      postId,
-      now,
-      content: body.content,
-      category: body.category || "",
-      mediaUrls: body.mediaUrls || [],
-    }
-  );
+  try {
+    const result = await session.run(
+      `
+      MATCH (u:User {id: $userId})
+      CREATE (p:Post {
+        id: $postId,
+        content: $content,
+        category: $category,
+        created_at: datetime($now),
+        updated_at: datetime($now),
+        is_deleted: false,
+        likes_count: 0,
+        comments_count: 0,
+        reposts_count: 0,
+        media_urls: $mediaUrls
+      })
+      CREATE (u)-[:POSTED]->(p)
+      RETURN p
+      `,
+      {
+        userId,
+        postId,
+        now,
+        content: body.content,
+        category: body.category || "",
+        mediaUrls: body.mediaUrls || [],
+      }
+    );
 
-  return result.records[0].get("p").properties;
+    if (result.records.length === 0) {
+      throw new Error("User not found");
+    }
+
+    return result.records[0].get("p").properties;
+  } finally {
+    await session.close();
+  }
 };
 export const createGroupPostService = async (
   userId: string,
