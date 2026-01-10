@@ -8,7 +8,8 @@
     "client": "cd client && npm run dev",
     "server": "cd server && npm run dev",
     "install": "npm install --prefix client && npm install --prefix server",
-    "test": "npx playwright test"
+    "test": "npx playwright test",
+    "test:e2e": "npx playwright test"
   },
   "keywords": [],
   "author": "",
