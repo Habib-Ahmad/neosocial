@@ -89,11 +89,15 @@ const CreateGroup: React.FC = () => {
 				description: 'Your group has been successfully created.',
 			});
 			navigate('/groups');
-		} catch (error) {
+		} catch (error: any) {
 			console.error(error);
+			// Display backend validation errors if available
+			const errorMessage = error?.response?.data?.errors?.[0] 
+				|| error?.response?.data?.message 
+				|| 'Something went wrong while creating the group.';
 			toast({
 				title: 'Error',
-				description: 'Something went wrong while creating the group.',
+				description: errorMessage,
 				variant: 'destructive',
 			});
 		} finally {

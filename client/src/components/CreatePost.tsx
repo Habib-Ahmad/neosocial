@@ -91,14 +91,18 @@ const CreatePost: React.FC<CreatePostProps> = ({ groupId }) => {
 			setPreviewFiles([]);
 			setIsPosting(false);
 		},
-		onError: (error, variables, context) => {
+		onError: (error: any, variables, context) => {
 			// Revert to previous state on error
 			if (context?.previousLatest) {
 				queryClient.setQueryData(['posts/latest'], context.previousLatest);
 			}
+			// Display backend validation errors if available
+			const errorMessage = error?.response?.data?.errors?.[0] 
+				|| error?.response?.data?.message 
+				|| 'Failed to create post. Please try again.';
 			toast({
 				title: 'Error',
-				description: 'Failed to create post. Please try again.',
+				description: errorMessage,
 				variant: 'destructive',
 			});
 			setIsPosting(false);
