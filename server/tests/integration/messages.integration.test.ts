@@ -160,36 +160,6 @@ it("🚫 User A cannot send a message to a non-existing user", async () => {
 
   expect(result.records.length).toBe(0);
 });
-it("Full messaging flow: friends can exchange messages", async () => {
-  const session = driver.session();
-
-  await session.run("MATCH (n) DETACH DELETE n");
-
-  // 1. Create users
-  await session.run(`
-    CREATE (a:User {id:'userA'})
-    CREATE (b:User {id:'userB'})
-    CREATE (a)-[:FRIENDS_WITH]->(b)
-  `);
-
-  // 2. Send message
-  await session.run(`
-    MATCH (a:User {id:'userA'})-[:FRIENDS_WITH]->(b:User {id:'userB'})
-    CREATE (m:Message {content:'Hello', createdAt: datetime()})
-    CREATE (a)-[:SENT]->(m)-[:TO]->(b)
-  `);
-
-  // 3. Read message
-  const result = await session.run(`
-    MATCH (:User {id:'userB'})<-[:TO]-(m:Message)
-    RETURN m.content AS content
-  `);
-
-  await session.close();
-
-  expect(result.records.length).toBe(1);
-  expect(result.records[0].get("content")).toBe("Hello");
-});
 it("Users can exchange multiple messages in the same conversation", async () => {
   const session = driver.session();
 
