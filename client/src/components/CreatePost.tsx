@@ -97,9 +97,10 @@ const CreatePost: React.FC<CreatePostProps> = ({ groupId }) => {
 				queryClient.setQueryData(['posts/latest'], context.previousLatest);
 			}
 			// Display backend validation errors if available
-			const errorMessage = error?.response?.data?.errors?.[0] 
-				|| error?.response?.data?.message 
-				|| 'Failed to create post. Please try again.';
+			const errorMessage =
+				error?.response?.data?.errors?.[0] ||
+				error?.response?.data?.message ||
+				'Failed to create post. Please try again.';
 			toast({
 				title: 'Error',
 				description: errorMessage,

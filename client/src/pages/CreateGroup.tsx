@@ -92,9 +92,10 @@ const CreateGroup: React.FC = () => {
 		} catch (error: any) {
 			console.error(error);
 			// Display backend validation errors if available
-			const errorMessage = error?.response?.data?.errors?.[0] 
-				|| error?.response?.data?.message 
-				|| 'Something went wrong while creating the group.';
+			const errorMessage =
+				error?.response?.data?.errors?.[0] ||
+				error?.response?.data?.message ||
+				'Something went wrong while creating the group.';
 			toast({
 				title: 'Error',
 				description: errorMessage,
