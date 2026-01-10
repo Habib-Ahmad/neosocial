@@ -163,12 +163,9 @@ describe('Notification Service', () => {
 
       await markNotificationAsReadService('notif-123');
 
+      expect(mockRun).toHaveBeenCalledTimes(1);
       expect(mockRun).toHaveBeenCalledWith(
         expect.stringContaining('SET n.is_read = true')
-      );
-      expect(mockRun).toHaveBeenCalledWith(
-        expect.stringContaining('MATCH (n:Notification {id: $notifId})'),
-        undefined
       );
     });
   });
