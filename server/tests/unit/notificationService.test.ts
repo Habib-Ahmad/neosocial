@@ -154,4 +154,22 @@ describe('Notification Service', () => {
       expect(result).toEqual([]);
     });
   });
+
+  describe('markNotificationAsReadService', () => {
+    it('should mark a notification as read', async () => {
+      mockRun.mockResolvedValueOnce({
+        records: [],
+      });
+
+      await markNotificationAsReadService('notif-123');
+
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.stringContaining('SET n.is_read = true')
+      );
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.stringContaining('MATCH (n:Notification {id: $notifId})'),
+        undefined
+      );
+    });
+  });
 });
