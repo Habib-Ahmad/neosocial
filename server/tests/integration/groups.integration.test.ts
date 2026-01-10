@@ -27,7 +27,8 @@ describe("Group Workflow Integration Tests", () => {
   let memberId: string;
   let groupId: string;
   let joinRequestId: string;
-  const testGroupName = `Test Group ${Date.now()}`;
+  // Use a unique name for each test run to avoid conflicts
+  const testGroupName = `IntegrationTestGroup${Date.now()}${Math.random().toString(36).substring(2, 7)}`;
 
   beforeAll(async () => {
     app = createTestApp();
@@ -42,6 +43,7 @@ describe("Group Workflow Integration Tests", () => {
       last_name: "User",
     });
     adminId = admin.id;
+    console.log('[TEST SETUP] Created admin user:', adminId);
 
     const hashedPassword2 = await bcrypt.hash("MemberPass123!", 10);
     const member = await createTestUser({
@@ -52,18 +54,22 @@ describe("Group Workflow Integration Tests", () => {
       last_name: "User",
     });
     memberId = member.id;
+    console.log('[TEST SETUP] Created member user:', memberId);
 
     const login1 = await request(app)
       .post("/api/users/login")
       .send({ email: "admin@test.com", password: "AdminPass123!" });
     adminToken = login1.body.token;
+    console.log('[TEST SETUP] Admin login status:', login1.status, 'Has token:', !!adminToken);
 
     const login2 = await request(app)
       .post("/api/users/login")
       .send({ email: "member@test.com", password: "MemberPass123!" });
     memberToken = login2.body.token;
+    console.log('[TEST SETUP] Member login status:', login2.status, 'Has token:', !!memberToken);
 
     // Create the test group in beforeAll to ensure it exists for all tests
+    console.log('[TEST SETUP] Creating group with name:', testGroupName);
     const groupResponse = await request(app)
       .post("/api/groups/")
       .set("Cookie", `token=${adminToken}`)
@@ -72,7 +78,28 @@ describe("Group Workflow Integration Tests", () => {
         description: "A group for testing",
         category: "general",
       });
+
+    console.log('[TEST SETUP] Group creation response:', {
+      status: groupResponse.status,
+      hasGroup: !!groupResponse.body.group,
+      body: groupResponse.body
+    });
+
+    // Verify group was created successfully
+    if (groupResponse.status !== 201) {
+      throw new Error(
+        `Failed to create test group. Status: ${groupResponse.status}, Body: ${JSON.stringify(groupResponse.body)}`
+      );
+    }
+
+    if (!groupResponse.body.group?.id) {
+      throw new Error(
+        `Group creation response missing group ID. Response: ${JSON.stringify(groupResponse.body)}`
+      );
+    }
+
     groupId = groupResponse.body.group.id;
+    console.log('[TEST SETUP] Successfully created group:', groupId);
   });
 
   afterAll(async () => {

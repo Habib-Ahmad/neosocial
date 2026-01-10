@@ -1,13 +1,13 @@
 name: CI/CD Pipeline
 
 # Triggers:
-# 1. Push - runs on any push to any branch
+# 1. Push - runs on pushes to main branch only (PRs are handled by pull_request trigger)
 # 2. Pull Request - runs on PRs to main
 # 3. Schedule - runs every night at 2 AM UTC
 # 4. Manual - can be triggered manually from GitHub Actions tab
 on:
   push:
-    branches: ['**']
+    branches: [main]
   pull_request:
     branches: [main]
   schedule:
