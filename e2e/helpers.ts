@@ -1,5 +1,8 @@
 import { Page } from '@playwright/test';
 
+// Track created users for cleanup
+const createdUsers: Array<{ email: string; password: string }> = [];
+
 export const TEST_USERS = {
   existing: {
     email: 'test_user@mailinator.com',
@@ -14,6 +17,43 @@ export const TEST_USERS = {
     lastName: 'Tester'
   }
 };
+
+/**
+ * Create a unique test user for isolated testing
+ * User is automatically tracked for cleanup
+ */
+export async function createUniqueTestUser() {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(7);
+  const user = {
+    email: `e2e_${timestamp}_${random}@test.com`,
+    password: 'TestPass123!',
+    firstName: 'E2E',
+    lastName: `Test${random}`,
+  };
+
+  createdUsers.push({ email: user.email, password: user.password });
+  return user;
+}
+
+/**
+ * Cleanup all created test users
+ * Note: Since we don't have a delete user endpoint, this is a placeholder
+ * Users will be cleaned by database cleanup scripts
+ */
+export async function cleanupTestUsers() {
+  console.log(`\n🧹 Created ${createdUsers.length} test users during this run`);
+  console.log('ℹ️  Users will be cleaned by periodic database cleanup');
+  createdUsers.length = 0; // Clear the array
+  console.log('✨ Cleanup tracking complete\n');
+}
+
+/**
+ * Get the list of created users
+ */
+export function getCreatedUsers() {
+  return [...createdUsers];
+}
 
 export class LoginPage {
   constructor(private page: Page) { }
@@ -101,9 +141,26 @@ export class HomePage {
   }
 }
 
-export async function setupAuthenticatedSession(page: Page, email: string = TEST_USERS.existing.email, password: string = TEST_USERS.existing.password) {
-  const loginPage = new LoginPage(page);
-  await loginPage.goto();
-  await loginPage.login(email, password);
-  await loginPage.expectLoginSuccess();
+/**
+ * Setup authenticated session with unique user for parallel test execution
+ */
+export async function setupAuthenticatedSession(page: Page, useUniqueUser = false) {
+  if (useUniqueUser) {
+    // Create and register a unique user for this test
+    const user = await createUniqueTestUser();
+
+    // Register the user via the UI
+    const registerPage = new RegisterPage(page);
+    await registerPage.goto();
+    await registerPage.register(user.firstName, user.lastName, user.email, user.password);
+
+    // Wait for successful registration (should redirect to home or login)
+    await page.waitForURL(/\/home/, { timeout: 10000 });
+  } else {
+    // Use the existing test user (for backward compatibility)
+    const loginPage = new LoginPage(page);
+    await loginPage.goto();
+    await loginPage.login(TEST_USERS.existing.email, TEST_USERS.existing.password);
+    await loginPage.expectLoginSuccess();
+  }
 }
