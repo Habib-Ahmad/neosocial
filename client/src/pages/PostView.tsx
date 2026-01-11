@@ -67,20 +67,46 @@ const PostView: React.FC = () => {
 	}
 
 	const handleToggleCommentLike = async (commentId: string) => {
+		// Optimistic update
+		setComments((prev) =>
+			prev.map((c) =>
+				c.id === commentId
+					? {
+							...c,
+							likes_count: c.liked_by_user ? c.likes_count - 1 : c.likes_count + 1,
+							liked_by_user: !c.liked_by_user,
+					  }
+					: c
+			)
+		);
+		
 		try {
 			const updated = await toggleCommentLike(commentId);
+			// Update with actual server response
 			setComments((prev) =>
 				prev.map((c) =>
 					c.id === updated.id
 						? {
 								...c,
 								likes_count: updated.likes_count,
-								liked_by_user: !c.liked_by_user,
+								liked_by_user: updated.liked_by_user,
 						  }
 						: c
 				)
 			);
 		} catch {
+			// Revert on error
+			setComments((prev) =>
+				prev.map((c) =>
+					c.id === commentId
+						? {
+								...c,
+								likes_count: c.liked_by_user ? c.likes_count - 1 : c.likes_count + 1,
+								liked_by_user: !c.liked_by_user,
+						  }
+						: c
+				)
+			);
 			toast({
 				title: 'Error',
 				description: 'Failed to toggle like.',
@@ -90,11 +116,22 @@ const PostView: React.FC = () => {
 	};
 
 	const handleLike = async () => {
+		// Optimistic update
+		const previousLiked = isLiked;
+		const previousCount = likesCount;
+		
+		setIsLiked(!isLiked);
+		setLikesCount(isLiked ? likesCount - 1 : likesCount + 1);
+		
 		try {
 			const updatedPost = await togglePostLike(post.id);
+			// Update with actual server response
 			setIsLiked(updatedPost.liked_by_me);
 			setLikesCount(updatedPost.likes_count);
 		} catch {
+			// Revert on error
+			setIsLiked(previousLiked);
+			setLikesCount(previousCount);
 			toast({
 				title: 'Error',
 				description: 'Failed to toggle like.',
