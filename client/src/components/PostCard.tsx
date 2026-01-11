@@ -52,11 +52,22 @@ const PostCard: React.FC<PostCardProps> = ({ post, groupName }) => {
   });
 
   const handleLike = async () => {
+    // Optimistic update
+    const previousLiked = isLiked;
+    const previousCount = likesCount;
+    
+    setIsLiked(!isLiked);
+    setLikesCount(isLiked ? likesCount - 1 : likesCount + 1);
+    
     try {
       const updatedPost = await likePost(post.id);
+      // Update with actual server response
       setIsLiked(updatedPost.liked_by_me);
       setLikesCount(updatedPost.likes_count);
     } catch (error) {
+      // Revert on error
+      setIsLiked(previousLiked);
+      setLikesCount(previousCount);
       toast({
         title: "Failed to update like",
         variant: "destructive",

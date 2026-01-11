@@ -26,9 +26,11 @@ export interface Notification {
   id: string;
   type: "like" | "comment" | "friend_request" | "mention";
   message: string;
-  time: string;
-  read: boolean;
-  avatar: string;
+  post_id?: string;
+  actor_name: string;
+  actor_id: string;
+  is_read: boolean;
+  created_at: string;
 }
 
 export interface FriendRequest {

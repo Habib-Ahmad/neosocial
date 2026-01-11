@@ -4,11 +4,11 @@ import {
   getUserNotificationsService,
   markNotificationAsReadService,
 } from '../../service/notificationService';
-import { session } from '../../db/neo4j';
+import { driver } from '../../db/neo4j';
 
 jest.mock('../../db/neo4j', () => ({
-  session: {
-    run: jest.fn(),
+  driver: {
+    session: jest.fn(),
   },
 }));
 
@@ -17,118 +17,76 @@ jest.mock('uuid', () => ({
 }));
 
 describe('Notification Service', () => {
-  let mockRun: any;
+  let mockSession: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockRun = session.run as jest.MockedFunction<typeof session.run>;
+    mockSession = {
+      run: jest.fn(),
+      close: jest.fn(),
+    };
+    (driver.session as jest.Mock).mockReturnValue(mockSession);
   });
 
   describe('createNotificationService', () => {
-    it('should create a notification with basic properties', async () => {
+    it('should create a notification for a post like', async () => {
       const mockNotification = {
         id: 'notif-mock-uuid-123',
-        type: 'LIKE',
-        title: 'New Like',
-        message: 'John liked your post',
+        type: 'like',
+        post_id: 'post123',
         is_read: false,
-        action_url: '/posts/post123',
-        metadata: null,
       };
 
-      mockRun.mockResolvedValueOnce({
-        records: [{ get: () => ({ properties: mockNotification }) }],
+      mockSession.run.mockResolvedValueOnce({
+        records: [{
+          get: (key: string) => {
+            if (key === 'n') return { properties: mockNotification };
+            if (key === 'actor_first_name') return 'John';
+            if (key === 'actor_last_name') return 'Doe';
+          }
+        }],
       });
 
       const result = await createNotificationService({
-        recipientId: 'user123',
+        userId: 'user123',
         actorId: 'user456',
-        type: 'LIKE',
-        title: 'New Like',
-        message: 'John liked your post',
-        targetId: 'post123',
-        targetLabel: 'Post',
-        action: 'LIKED',
-        actionUrl: '/posts/post123',
+        type: 'like',
+        postId: 'post123',
       });
 
       expect(result.id).toBe('notif-mock-uuid-123');
-      expect(result.type).toBe('LIKE');
-      expect(result.title).toBe('New Like');
-      expect(result.message).toBe('John liked your post');
+      expect(result.type).toBe('like');
+      expect(result.post_id).toBe('post123');
       expect(result.is_read).toBe(false);
-      expect(mockRun).toHaveBeenCalledWith(
+      expect(result.actor_name).toBe('John Doe');
+      expect(mockSession.run).toHaveBeenCalledWith(
         expect.stringContaining('CREATE (n:Notification'),
         expect.objectContaining({
-          recipientId: 'user123',
+          userId: 'user123',
           actorId: 'user456',
-          type: 'LIKE',
-          targetId: 'post123',
-          targetLabel: 'Post',
+          type: 'like',
+          postId: 'post123',
         })
       );
-    });
-
-    it('should create a notification with metadata', async () => {
-      const mockNotification = {
-        id: 'notif-mock-uuid-123',
-        type: 'COMMENT',
-        title: 'New Comment',
-        message: 'Jane commented on your post',
-        is_read: false,
-        action_url: '/posts/post456',
-        metadata: JSON.stringify({ commentId: 'comment789', postTitle: 'My Post' }),
-      };
-
-      mockRun.mockResolvedValueOnce({
-        records: [{ get: () => ({ properties: mockNotification }) }],
-      });
-
-      const result = await createNotificationService({
-        recipientId: 'user123',
-        actorId: 'user789',
-        type: 'COMMENT',
-        title: 'New Comment',
-        message: 'Jane commented on your post',
-        targetId: 'post456',
-        targetLabel: 'Post',
-        action: 'COMMENTED',
-        actionUrl: '/posts/post456',
-        metadata: { commentId: 'comment789', postTitle: 'My Post' },
-      });
-
-      expect(result.metadata).toBeDefined();
-      expect(mockRun).toHaveBeenCalledWith(
-        expect.stringContaining('CREATE (n:Notification'),
-        expect.objectContaining({
-          metadata: JSON.stringify({ commentId: 'comment789', postTitle: 'My Post' }),
-        })
-      );
+      expect(mockSession.close).toHaveBeenCalled();
     });
   });
 
   describe('getUserNotificationsService', () => {
     it('should retrieve all notifications for a user', async () => {
       const mockNotifications = [
-        {
-          id: 'notif-1',
-          type: 'LIKE',
-          title: 'New Like',
-          message: 'Someone liked your post',
-          is_read: false,
-        },
-        {
-          id: 'notif-2',
-          type: 'COMMENT',
-          title: 'New Comment',
-          message: 'Someone commented on your post',
-          is_read: true,
-        },
+        { id: 'notif-1', type: 'like', post_id: 'post1', is_read: false },
+        { id: 'notif-2', type: 'like', post_id: 'post2', is_read: true },
       ];
 
-      mockRun.mockResolvedValueOnce({
+      mockSession.run.mockResolvedValueOnce({
         records: mockNotifications.map((notif) => ({
-          get: () => ({ properties: notif }),
+          get: (key: string) => {
+            if (key === 'n') return { properties: notif };
+            if (key === 'actor_first_name') return 'Jane';
+            if (key === 'actor_last_name') return 'Smith';
+            if (key === 'actor_id') return 'actor123';
+          }
         })),
       });
 
@@ -136,15 +94,17 @@ describe('Notification Service', () => {
 
       expect(result).toHaveLength(2);
       expect(result[0].id).toBe('notif-1');
+      expect(result[0].actor_name).toBe('Jane Smith');
       expect(result[1].id).toBe('notif-2');
-      expect(mockRun).toHaveBeenCalledWith(
-        expect.stringContaining('MATCH (:User {id: $userId})-[:RECEIVES]->(n:Notification)'),
+      expect(mockSession.run).toHaveBeenCalledWith(
+        expect.stringContaining('MATCH (u:User {id: $userId})-[:RECEIVES]->(n:Notification)'),
         expect.objectContaining({ userId: 'user123' })
       );
+      expect(mockSession.close).toHaveBeenCalled();
     });
 
     it('should return empty array when user has no notifications', async () => {
-      mockRun.mockResolvedValueOnce({
+      mockSession.run.mockResolvedValueOnce({
         records: [],
       });
 
@@ -152,21 +112,24 @@ describe('Notification Service', () => {
 
       expect(result).toHaveLength(0);
       expect(result).toEqual([]);
+      expect(mockSession.close).toHaveBeenCalled();
     });
   });
 
   describe('markNotificationAsReadService', () => {
     it('should mark a notification as read', async () => {
-      mockRun.mockResolvedValueOnce({
+      mockSession.run.mockResolvedValueOnce({
         records: [],
       });
 
       await markNotificationAsReadService('notif-123');
 
-      expect(mockRun).toHaveBeenCalledTimes(1);
-      expect(mockRun).toHaveBeenCalledWith(
-        expect.stringContaining('SET n.is_read = true')
+      expect(mockSession.run).toHaveBeenCalledTimes(1);
+      expect(mockSession.run).toHaveBeenCalledWith(
+        expect.stringContaining('SET n.is_read = true'),
+        expect.objectContaining({ notifId: 'notif-123' })
       );
+      expect(mockSession.close).toHaveBeenCalled();
     });
   });
 });

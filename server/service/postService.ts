@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { Post } from "../models/Post";
 import { timestampToDate, toNumber } from "../utils/neo4j";
 import neo4j from "neo4j-driver";
+import { createNotificationService } from "./notificationService";
 
 export const createPostService = async (userId: string, body: any): Promise<Post> => {
   const postId = uuidv4();
@@ -598,7 +599,8 @@ export const togglePostLikeService = async (userId: string, postId: string): Pro
       `
       MATCH (u:User {id: $userId}), (p:Post {id: $postId})
       OPTIONAL MATCH (u)-[r:LIKED]->(p)
-      WITH u, p, r,
+      OPTIONAL MATCH (author:User)-[:POSTED]->(p)
+      WITH u, p, r, author,
            CASE WHEN r IS NOT NULL THEN true ELSE false END AS alreadyLiked
       FOREACH (_ IN CASE WHEN alreadyLiked THEN [1] ELSE [] END |
         DELETE r
@@ -608,16 +610,37 @@ export const togglePostLikeService = async (userId: string, postId: string): Pro
         CREATE (u)-[:LIKED]->(p)
         SET p.likes_count = coalesce(p.likes_count, 0) + 1
       )
-      WITH u, p
+      WITH u, p, author, alreadyLiked
       OPTIONAL MATCH (u)-[r2:LIKED]->(p)
-      RETURN p, r2 IS NOT NULL AS liked_by_me
+      RETURN p, r2 IS NOT NULL AS liked_by_me, author.id AS authorId, alreadyLiked
       `,
       { userId, postId }
     );
 
+    if (result.records.length === 0) {
+      throw new Error("User or post not found");
+    }
+
     const record = result.records[0];
     const rawPost = record.get("p").properties;
     const likedByMe = record.get("liked_by_me");
+    const authorId = record.get("authorId");
+    const wasAlreadyLiked = record.get("alreadyLiked");
+
+    // Create notification if this is a new like and the liker is not the author
+    if (likedByMe && !wasAlreadyLiked && authorId && authorId !== userId) {
+      try {
+        await createNotificationService({
+          userId: authorId,
+          actorId: userId,
+          type: "like",
+          postId: postId,
+        });
+      } catch (notifError) {
+        console.error("Failed to create notification:", notifError);
+        // Don't fail the like operation if notification fails
+      }
+    }
 
     return {
       ...rawPost,

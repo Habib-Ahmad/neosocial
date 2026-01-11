@@ -1,4 +1,4 @@
-import { driver, session } from "../db/neo4j";
+import { driver } from "../db/neo4j";
 import { v4 as uuidv4 } from "uuid";
 import { timestampToDate } from "../utils/neo4j";
 
@@ -8,35 +8,40 @@ export const createConversationService = async (
   type: "private" | "group",
   name?: string
 ) => {
-  const conversationId = `conv-${uuidv4()}`;
-  const now = new Date().toISOString();
+  const session = driver.session();
+  try {
+    const conversationId = `conv-${uuidv4()}`;
+    const now = new Date().toISOString();
 
-  const result = await session.run(
-    `
-    CREATE (c:Conversation {
-      id: $conversationId,
-      type: $type,
-      name: $name,
-      created_at: datetime($now),
-      last_message_at: datetime($now),
-      is_archived: false
-    })
-    RETURN c
-    `,
-    { conversationId, type, name: name || null, now }
-  );
-
-  for (const id of [userId, ...participantIds]) {
-    await session.run(
+    const result = await session.run(
       `
-      MATCH (u:User {id: $id}), (c:Conversation {id: $conversationId})
-      CREATE (u)-[:PARTICIPANT_IN {joined_at: datetime($now)}]->(c)
+      CREATE (c:Conversation {
+        id: $conversationId,
+        type: $type,
+        name: $name,
+        created_at: datetime($now),
+        last_message_at: datetime($now),
+        is_archived: false
+      })
+      RETURN c
       `,
-      { id, conversationId, now }
+      { conversationId, type, name: name || null, now }
     );
-  }
 
-  return result.records[0].get("c").properties;
+    for (const id of [userId, ...participantIds]) {
+      await session.run(
+        `
+        MATCH (u:User {id: $id}), (c:Conversation {id: $conversationId})
+        CREATE (u)-[:PARTICIPANT_IN {joined_at: datetime($now)}]->(c)
+        `,
+        { id, conversationId, now }
+      );
+    }
+
+    return result.records[0].get("c").properties;
+  } finally {
+    await session.close();
+  }
 };
 
 export const getOrCreatePrivateConversationService = async (user1: string, user2: string) => {
@@ -238,59 +243,66 @@ export const getUserConversationsService = async (
   onlineUsers: Record<string, string>
 ) => {
   const session = driver.session();
+  try {
+    const result = await session.run(
+      `
+      MATCH (u:User {id: $userId})-[:PARTICIPANT_IN]->(c:Conversation)<-[:PARTICIPANT_IN]-(other:User)
+      WHERE other.id <> $userId
 
-  const result = await session.run(
-    `
-    MATCH (u:User {id: $userId})-[:PARTICIPANT_IN]->(c:Conversation)<-[:PARTICIPANT_IN]-(other:User)
-    WHERE other.id <> $userId
+      OPTIONAL MATCH (c)<-[:IN_CONVERSATION]-(m:Message)
+      
+      WITH c, other, 
+           MAX(m.created_at) AS lastMessageTime, 
+           LAST(collect(m)) AS lastMessage,
+           COUNT(CASE WHEN NOT $userId IN m.read_by THEN 1 ELSE NULL END) AS unreadCount
 
-    OPTIONAL MATCH (c)<-[:IN_CONVERSATION]-(m:Message)
-    
-    WITH c, other, 
-         MAX(m.created_at) AS lastMessageTime, 
-         LAST(collect(m)) AS lastMessage,
-         COUNT(CASE WHEN NOT $userId IN m.read_by THEN 1 ELSE NULL END) AS unreadCount
+      RETURN 
+        c, 
+        other, 
+        lastMessage.content AS lastMessageContent, 
+        coalesce(lastMessageTime, c.last_message_at) AS resolvedLastMessageTime,
+        unreadCount
+      ORDER BY resolvedLastMessageTime DESC
+      `,
+      { userId }
+    );
 
-    RETURN 
-      c, 
-      other, 
-      lastMessage.content AS lastMessageContent, 
-      coalesce(lastMessageTime, c.last_message_at) AS resolvedLastMessageTime,
-      unreadCount
-    ORDER BY resolvedLastMessageTime DESC
-    `,
-    { userId }
-  );
+    return result.records.map((record) => {
+      const c = record.get("c").properties;
+      const other = record.get("other").properties;
+      const lastMessageContent = record.get("lastMessageContent") || null;
+      const lastMessageTime = record.get("resolvedLastMessageTime") || null;
+      const unreadCount = record.get("unreadCount").toInt();
 
-  return result.records.map((record) => {
-    const c = record.get("c").properties;
-    const other = record.get("other").properties;
-    const lastMessageContent = record.get("lastMessageContent") || null;
-    const lastMessageTime = record.get("resolvedLastMessageTime") || null;
-    const unreadCount = record.get("unreadCount").toInt();
-
-    return {
-      id: c.id,
-      participantId: other.id,
-      participantName: `${other.first_name} ${other.last_name}`,
-      participantAvatar: other.profile_picture || null,
-      lastMessage: lastMessageContent,
-      lastMessageTime: lastMessageTime ? timestampToDate(lastMessageTime) : null,
-      unreadCount,
-      online: !!onlineUsers[other.id],
-    };
-  });
+      return {
+        id: c.id,
+        participantId: other.id,
+        participantName: `${other.first_name} ${other.last_name}`,
+        participantAvatar: other.profile_picture || null,
+        lastMessage: lastMessageContent,
+        lastMessageTime: lastMessageTime ? timestampToDate(lastMessageTime) : null,
+        unreadCount,
+        online: !!onlineUsers[other.id],
+      };
+    });
+  } finally {
+    await session.close();
+  }
 };
 
 export const markMessagesAsReadService = async (conversationId: string, userId: string) => {
   const session = driver.session();
-  await session.run(
-    `
-      MATCH (m:Message)-[:IN_CONVERSATION]->(:Conversation {id: $conversationId})
-      WHERE NOT $userId IN m.read_by
-      SET m.read_by = coalesce(m.read_by, []) + $userId
-      RETURN count(m) AS marked
-      `,
-    { conversationId, userId }
-  );
+  try {
+    await session.run(
+      `
+        MATCH (m:Message)-[:IN_CONVERSATION]->(:Conversation {id: $conversationId})
+        WHERE NOT $userId IN m.read_by
+        SET m.read_by = coalesce(m.read_by, []) + $userId
+        RETURN count(m) AS marked
+        `,
+      { conversationId, userId }
+    );
+  } finally {
+    await session.close();
+  }
 };

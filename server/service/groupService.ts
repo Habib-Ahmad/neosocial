@@ -1,21 +1,28 @@
-import { session, driver } from "../db/neo4j";
+import { driver } from "../db/neo4j";
 import { v4 as uuidv4 } from "uuid";
 import neo4j from "neo4j-driver";
 
 // Get all group names for uniqueness validation
 export const getAllGroupNamesService = async (): Promise<string[]> => {
-  const result = await session.run(`MATCH (g:Group) RETURN g.name as name`);
-  return result.records.map((record) => record.get("name"));
+  const session = driver.session();
+  try {
+    const result = await session.run(`MATCH (g:Group) RETURN g.name as name`);
+    return result.records.map((record) => record.get("name"));
+  } finally {
+    await session.close();
+  }
 };
 
 export const createGroupService = async (creatorId: string, groupData: any) => {
-  const groupId = `group-${uuidv4()}`;
-  const now = new Date().toISOString();
+  const session = driver.session();
+  try {
+    const groupId = `group-${uuidv4()}`;
+    const now = new Date().toISOString();
 
-  const { name, description, category, rules = "", cover_image = null } = groupData;
+    const { name, description, category, rules = "", cover_image = null } = groupData;
 
-  const result = await session.run(
-    `
+    const result = await session.run(
+      `
     MATCH (u:User {id: $creatorId})
     CREATE (g:Group {
       id: $groupId,
@@ -33,173 +40,213 @@ export const createGroupService = async (creatorId: string, groupData: any) => {
     CREATE (u)-[:MEMBER_OF {joined_at: datetime($now), role: 'admin'}]->(g)
     RETURN g
     `,
-    {
-      creatorId,
-      groupId,
-      now,
-      name,
-      description,
-      category,
-      cover_image,
-      rules,
-    }
-  );
+      {
+        creatorId,
+        groupId,
+        now,
+        name,
+        description,
+        category,
+        cover_image,
+        rules,
+      }
+    );
 
-  return result.records[0].get("g").properties;
+    return result.records[0].get("g").properties;
+  } finally {
+    await session.close();
+  }
 };
 
 export const getGroupMembersService = async (groupId: string) => {
-  const result = await session.run(
-    `
+  const session = driver.session();
+  try {
+    const result = await session.run(
+      `
     MATCH (u:User)-[m:MEMBER_OF]->(g:Group {id: $groupId})
     RETURN u, m
     `,
-    { groupId }
-  );
+      { groupId }
+    );
 
-  return result.records.map((r) => ({
-    user: r.get("u").properties,
-    membership: r.get("m").properties,
-  }));
+    return result.records.map((r) => ({
+      user: r.get("u").properties,
+      membership: r.get("m").properties,
+    }));
+  } finally {
+    await session.close();
+  }
 };
 
 export const submitJoinRequestService = async (userId: string, groupId: string) => {
-  const now = new Date().toISOString();
-  const requestId = `join-req-${uuidv4()}`;
+  const session = driver.session();
+  try {
+    const now = new Date().toISOString();
+    const requestId = `join-req-${uuidv4()}`;
 
-  const groupResult = await session.run(`MATCH (g:Group {id: $groupId}) RETURN g`, { groupId });
+    const groupResult = await session.run(`MATCH (g:Group {id: $groupId}) RETURN g`, { groupId });
 
-  if (groupResult.records.length === 0) throw new Error("Group not found");
+    if (groupResult.records.length === 0) throw new Error("Group not found");
 
-  const result = await session.run(
-    `
-    MATCH (u:User {id: $userId}), (g:Group {id: $groupId})
-    CREATE (r:JoinRequest {
-      id: $requestId,
-      message: "",
-      status: 'pending',
-      created_at: datetime($now)
-    })
-    CREATE (u)-[:SUBMITTED {submitted_at: datetime($now)}]->(r)
-    CREATE (r)-[:FOR_GROUP]->(g)
-    RETURN r
-    `,
-    { userId, groupId, requestId, now }
-  );
-  return { request: result.records[0].get("r").properties };
+    const result = await session.run(
+      `
+      MATCH (u:User {id: $userId}), (g:Group {id: $groupId})
+      CREATE (r:JoinRequest {
+        id: $requestId,
+        message: "",
+        status: 'pending',
+        created_at: datetime($now)
+      })
+      CREATE (u)-[:SUBMITTED {submitted_at: datetime($now)}]->(r)
+      CREATE (r)-[:FOR_GROUP]->(g)
+      RETURN r
+      `,
+      { userId, groupId, requestId, now }
+    );
+    return { request: result.records[0].get("r").properties };
+  } finally {
+    await session.close();
+  }
 };
 
 export const getSentJoinRequestService = async (userId: string) => {
-  const result = await session.run(
-    `
-    MATCH (u:User {id: $userId})-[:SUBMITTED]->(r:JoinRequest)-[:FOR_GROUP]->(g:Group)
-    RETURN r, g
-    ORDER BY r.created_at DESC
-    `,
-    { userId }
-  );
+  const session = driver.session();
+  try {
+    const result = await session.run(
+      `
+      MATCH (u:User {id: $userId})-[:SUBMITTED]->(r:JoinRequest)-[:FOR_GROUP]->(g:Group)
+      RETURN r, g
+      ORDER BY r.created_at DESC
+      `,
+      { userId }
+    );
 
-  return result.records.map((record) => ({
-    request: record.get("r").properties,
-    group: record.get("g").properties,
-  }));
+    return result.records.map((record) => ({
+      request: record.get("r").properties,
+      group: record.get("g").properties,
+    }));
+  } finally {
+    await session.close();
+  }
 };
 export const getReceivedJoinRequestService = async (userId: string) => {
-  const result = await session.run(
-    `
-    MATCH (admin:User {id: $userId})-[:ADMIN_OF]->(g:Group)
-    MATCH (r:JoinRequest {status: 'pending'})-[:FOR_GROUP]->(g)
-    MATCH (sender:User)-[:SUBMITTED]->(r)
-    RETURN r, g, sender
-    ORDER BY r.created_at ASC
-    `,
-    { userId }
-  );
+  const session = driver.session();
+  try {
+    const result = await session.run(
+      `
+      MATCH (admin:User {id: $userId})-[:ADMIN_OF]->(g:Group)
+      MATCH (r:JoinRequest {status: 'pending'})-[:FOR_GROUP]->(g)
+      MATCH (sender:User)-[:SUBMITTED]->(r)
+      RETURN r, g, sender
+      ORDER BY r.created_at ASC
+      `,
+      { userId }
+    );
 
-  return result.records.map((record) => ({
-    request: record.get("r").properties,
-    group: record.get("g").properties,
-    sender: record.get("sender").properties,
-  }));
+    return result.records.map((record) => ({
+      request: record.get("r").properties,
+      group: record.get("g").properties,
+      sender: record.get("sender").properties,
+    }));
+  } finally {
+    await session.close();
+  }
 };
 
 export const cancelJoinRequestService = async (userId: string, requestId: string) => {
-  const result = await session.run(
-    `
-    MATCH (u:User {id: $userId})-[:SUBMITTED]->(r:JoinRequest {id: $requestId})
-    DETACH DELETE r
-    RETURN r
-    `,
-    { userId, requestId }
-  );
+  const session = driver.session();
+  try {
+    const result = await session.run(
+      `
+      MATCH (u:User {id: $userId})-[:SUBMITTED]->(r:JoinRequest {id: $requestId})
+      DETACH DELETE r
+      RETURN r
+      `,
+      { userId, requestId }
+    );
 
-  if (result.records.length === 0) {
-    throw new Error("Request not found or not owned by user");
+    if (result.records.length === 0) {
+      throw new Error("Request not found or not owned by user");
+    }
+
+    return { success: true };
+  } finally {
+    await session.close();
   }
-
-  return { success: true };
 };
 export const acceptJoinRequestService = async (reviewerId: string, requestId: string) => {
-  const now = new Date().toISOString();
+  const session = driver.session();
+  try {
+    const now = new Date().toISOString();
 
-  const result = await session.run(
-    `
-    MATCH (r:JoinRequest {id: $requestId})-[:FOR_GROUP]->(g:Group)
-    MATCH (reviewer:User {id: $reviewerId})
-    OPTIONAL MATCH (sender:User)-[:SUBMITTED]->(r)
+    const result = await session.run(
+      `
+      MATCH (r:JoinRequest {id: $requestId})-[:FOR_GROUP]->(g:Group)
+      MATCH (reviewer:User {id: $reviewerId})
+      OPTIONAL MATCH (sender:User)-[:SUBMITTED]->(r)
 
-    // Update and review
-    SET r.status = 'approved', r.reviewed_at = datetime($now), r.reviewed_by = $reviewerId
-    CREATE (reviewer)-[:REVIEWED {reviewed_at: datetime($now), decision: "approved"}]->(r)
+      // Update and review
+      SET r.status = 'approved', r.reviewed_at = datetime($now), r.reviewed_by = $reviewerId
+      CREATE (reviewer)-[:REVIEWED {reviewed_at: datetime($now), decision: "approved"}]->(r)
 
-    // Membership
-    CREATE (sender)-[:MEMBER_OF {joined_at: datetime($now), role: "member"}]->(g)
+      // Membership
+      CREATE (sender)-[:MEMBER_OF {joined_at: datetime($now), role: "member"}]->(g)
 
-    // Delete request
-    DETACH DELETE r
+      // Delete request
+      DETACH DELETE r
 
-    RETURN g
-    `,
-    { reviewerId, requestId, now }
-  );
+      RETURN g
+      `,
+      { reviewerId, requestId, now }
+    );
 
-  return result.records[0]?.get("g").properties;
+    return result.records[0]?.get("g").properties;
+  } finally {
+    await session.close();
+  }
 };
 export const rejectJoinRequestService = async (reviewerId: string, requestId: string) => {
-  const now = new Date().toISOString();
+  const session = driver.session();
+  try {
+    const now = new Date().toISOString();
 
-  const result = await session.run(
-    `
-    MATCH (r:JoinRequest {id: $requestId})-[:FOR_GROUP]->(g:Group)
-    MATCH (reviewer:User {id: $reviewerId})
+    const result = await session.run(
+      `
+      MATCH (r:JoinRequest {id: $requestId})-[:FOR_GROUP]->(g:Group)
+      MATCH (reviewer:User {id: $reviewerId})
 
-    // Update and review
-    SET r.status = 'rejected', r.reviewed_at = datetime($now), r.reviewed_by = $reviewerId
-    CREATE (reviewer)-[:REVIEWED {reviewed_at: datetime($now), decision: "rejected"}]->(r)
+      // Update and review
+      SET r.status = 'rejected', r.reviewed_at = datetime($now), r.reviewed_by = $reviewerId
+      CREATE (reviewer)-[:REVIEWED {reviewed_at: datetime($now), decision: "rejected"}]->(r)
 
-    // Delete request
-    DETACH DELETE r
+      // Delete request
+      DETACH DELETE r
 
-    RETURN g
-    `,
-    { reviewerId, requestId, now }
-  );
+      RETURN g
+      `,
+      { reviewerId, requestId, now }
+    );
 
-  return result.records[0]?.get("g").properties;
+    return result.records[0]?.get("g").properties;
+  } finally {
+    await session.close();
+  }
 };
 export const suggestGroupsService = async (userId: string, limit: number = 20): Promise<any[]> => {
-  const convertProps = (obj: any) => {
-    const props = obj.properties;
-    const converted: any = {};
-    for (const key in props) {
-      converted[key] =
-        typeof props[key]?.toNumber === "function" ? props[key].toNumber() : props[key];
-    }
-    return converted;
-  };
+  const session = driver.session();
+  try {
+    const convertProps = (obj: any) => {
+      const props = obj.properties;
+      const converted: any = {};
+      for (const key in props) {
+        converted[key] =
+          typeof props[key]?.toNumber === "function" ? props[key].toNumber() : props[key];
+      }
+      return converted;
+    };
 
-  const result = await session.run(
-    `
+    const result = await session.run(
+      `
     MATCH (u:User {id: $userId})-[:FRIENDS_WITH]-(f:User)-[:MEMBER_OF]->(g:Group)
     WHERE NOT (u)-[:MEMBER_OF]->(g)
     OPTIONAL MATCH (g)<-[:MEMBER_OF]-(m:User)
@@ -207,21 +254,21 @@ export const suggestGroupsService = async (userId: string, limit: number = 20): 
     ORDER BY friendCount DESC
     LIMIT $limit
     `,
-    { userId, limit: neo4j.int(limit) }
-  );
+      { userId, limit: neo4j.int(limit) }
+    );
 
-  const suggestedGroups = result.records.map((r) => {
-    const group = convertProps(r.get("g"));
-    const friend_count = r.get("friendCount").toNumber();
-    const member_count = r.get("memberCount").toNumber();
-    return { ...group, friend_count, member_count };
-  });
+    const suggestedGroups = result.records.map((r) => {
+      const group = convertProps(r.get("g"));
+      const friend_count = r.get("friendCount").toNumber();
+      const member_count = r.get("memberCount").toNumber();
+      return { ...group, friend_count, member_count };
+    });
 
-  const excludedIds = suggestedGroups.map((g) => g.id);
+    const excludedIds = suggestedGroups.map((g) => g.id);
 
-  if (suggestedGroups.length < limit) {
-    const fillerResult = await session.run(
-      `
+    if (suggestedGroups.length < limit) {
+      const fillerResult = await session.run(
+        `
       MATCH (g:Group)
       WHERE NOT (:User {id: $userId})-[:MEMBER_OF]->(g)
         AND NOT g.id IN $excludedIds
@@ -229,48 +276,56 @@ export const suggestGroupsService = async (userId: string, limit: number = 20): 
       ORDER BY rand()
       LIMIT $fill
       `,
-      {
-        userId,
-        excludedIds,
-        fill: neo4j.int(limit - suggestedGroups.length),
-      }
-    );
+        {
+          userId,
+          excludedIds,
+          fill: neo4j.int(limit - suggestedGroups.length),
+        }
+      );
 
-    const filler = fillerResult.records.map((r) => {
-      const group = convertProps(r.get("g"));
-      const member_count =
-        typeof r.get("memberCount")?.toNumber === "function" ? r.get("memberCount").toNumber() : 0;
-      return { ...group, friend_count: 0, member_count };
-    });
+      const filler = fillerResult.records.map((r) => {
+        const group = convertProps(r.get("g"));
+        const member_count =
+          typeof r.get("memberCount")?.toNumber === "function" ? r.get("memberCount").toNumber() : 0;
+        return { ...group, friend_count: 0, member_count };
+      });
 
-    return [...suggestedGroups, ...filler];
+      return [...suggestedGroups, ...filler];
+    }
+
+    return suggestedGroups;
+  } finally {
+    await session.close();
   }
-
-  return suggestedGroups;
 };
 
 export const searchGroupsService = async (query: string) => {
-  const result = await session.run(
-    `
-    MATCH (g:Group)
-    WHERE (
-      toLower(g.name) CONTAINS toLower($query) OR
-      toLower(g.description) CONTAINS toLower($query) OR
-      toLower(g.category) CONTAINS toLower($query)
-    )
-    OPTIONAL MATCH (g)<-[:MEMBER_OF]-(m:User)
-    RETURN g, COUNT(m) AS memberCount
-    ORDER BY g.member_count DESC
-    LIMIT 20
-    `,
-    { query }
-  );
+  const session = driver.session();
+  try {
+    const result = await session.run(
+      `
+      MATCH (g:Group)
+      WHERE (
+        toLower(g.name) CONTAINS toLower($query) OR
+        toLower(g.description) CONTAINS toLower($query) OR
+        toLower(g.category) CONTAINS toLower($query)
+      )
+      OPTIONAL MATCH (g)<-[:MEMBER_OF]-(m:User)
+      RETURN g, COUNT(m) AS memberCount
+      ORDER BY g.member_count DESC
+      LIMIT 20
+      `,
+      { query }
+    );
 
-  return result.records.map((r) => {
-    const group = r.get("g").properties;
-    const member_count = r.get("memberCount").toNumber();
-    return { ...group, member_count };
-  });
+    return result.records.map((r) => {
+      const group = r.get("g").properties;
+      const member_count = r.get("memberCount").toNumber();
+      return { ...group, member_count };
+    });
+  } finally {
+    await session.close();
+  }
 };
 
 export const getGroupDetailsService = async (groupId: string, userId: string) => {
@@ -375,21 +430,26 @@ export const getGroupDetailsService = async (groupId: string, userId: string) =>
 };
 
 export const leaveGroupService = async (userId: string, groupId: string) => {
-  const result = await session.run(
-    `
-    MATCH (u:User {id: $userId})-[r:MEMBER_OF]->(g:Group {id: $groupId})
-    DELETE r
-    SET g.member_count = g.member_count - 1
-    RETURN g
-    `,
-    { userId, groupId }
-  );
+  const session = driver.session();
+  try {
+    const result = await session.run(
+      `
+      MATCH (u:User {id: $userId})-[r:MEMBER_OF]->(g:Group {id: $groupId})
+      DELETE r
+      SET g.member_count = g.member_count - 1
+      RETURN g
+      `,
+      { userId, groupId }
+    );
 
-  if (result.records.length === 0) {
-    throw new Error("User is not a member of this group or group not found");
+    if (result.records.length === 0) {
+      throw new Error("User is not a member of this group or group not found");
+    }
+
+    return result.records[0].get("g").properties;
+  } finally {
+    await session.close();
   }
-
-  return result.records[0].get("g").properties;
 };
 export const removeMemberService = async (groupId: string, memberId: string, adminId: string) => {
   const session = driver.session();

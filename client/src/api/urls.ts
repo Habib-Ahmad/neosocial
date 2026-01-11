@@ -59,14 +59,18 @@ export const urls = {
 			`/groups/${groupId}/remove/${memberId}`,
 		updateGroup: (groupId: string) => `/groups/${groupId}`, // <-- Add this line for update group
 	},
-   messaging: {
-    getUserConversations: "/messages",
-    getConversation: (id: string) => `/messages/${id}`,
-    sendMessage: (conversationId: string) =>
-      `/messages/${conversationId}/messages`,
-    getConversationMessages: (conversationId: string) =>
-      `/messages/${conversationId}/messages`,
-    markConversationAsRead: (conversationId: string) =>
-      `/messages/${conversationId}/read`,
-  },
+	messaging: {
+		getUserConversations: "/messages",
+		getConversation: (id: string) => `/messages/${id}`,
+		sendMessage: (conversationId: string) =>
+			`/messages/${conversationId}/messages`,
+		getConversationMessages: (conversationId: string) =>
+			`/messages/${conversationId}/messages`,
+		markConversationAsRead: (conversationId: string) =>
+			`/messages/${conversationId}/read`,
+	},
+	notifications: {
+		getAll: '/notifications/',
+		markAsRead: (id: string) => `/notifications/${id}/read`,
+	},
 };

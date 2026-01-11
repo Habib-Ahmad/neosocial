@@ -1,14 +1,37 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Bell, Heart, MessageSquare, UserPlus, Check } from 'lucide-react';
-import { mockNotifications } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
+import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '@/api/notifications';
+import { formatDistanceToNow } from 'date-fns';
+import { Notification } from '@/types';
 
 const Notifications: React.FC = () => {
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const data = await getNotifications();
+      setNotifications(data);
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load notifications",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -23,26 +46,66 @@ const Notifications: React.FC = () => {
     }
   };
 
-  const markAsRead = (notificationId: string) => {
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === notificationId ? { ...notif, read: true } : notif
-      )
-    );
+  const getNotificationMessage = (notification: Notification) => {
+    switch (notification.type) {
+      case 'like':
+        return `${notification.actor_name} liked your post`;
+      case 'comment':
+        return `${notification.actor_name} commented on your post`;
+      case 'friend_request':
+        return `${notification.actor_name} sent you a friend request`;
+      default:
+        return 'New notification';
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notif => ({ ...notif, read: true }))
-    );
-    
-    toast({
-      title: "All notifications marked as read",
-      description: "Your notifications have been updated.",
-    });
+  const handleMarkAsRead = async (notificationId: string) => {
+    try {
+      await markNotificationAsRead(notificationId);
+      setNotifications(prev => 
+        prev.map(notif => 
+          notif.id === notificationId ? { ...notif, is_read: true } : notif
+        )
+      );
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const handleMarkAllAsRead = async () => {
+    try {
+      await markAllNotificationsAsRead();
+      setNotifications(prev => 
+        prev.map(notif => ({ ...notif, is_read: true }))
+      );
+      
+      toast({
+        title: "All notifications marked as read",
+        description: "Your notifications have been updated.",
+      });
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
+      toast({
+        title: "Error",
+        description: "Failed to mark notifications as read",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const unreadCount = notifications.filter(n => !n.is_read).length;
+
+  if (loading) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        <Card className="backdrop-blur-sm bg-white/80 border-purple-100 shadow-lg">
+          <CardContent className="p-8 text-center">
+            <div className="animate-pulse text-gray-500">Loading notifications...</div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -63,7 +126,7 @@ const Notifications: React.FC = () => {
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={markAllAsRead}
+                onClick={handleMarkAllAsRead}
                 className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
               >
                 <Check size={16} className="mr-2" />
@@ -80,53 +143,35 @@ const Notifications: React.FC = () => {
             <Card 
               key={notification.id} 
               className={`backdrop-blur-sm border-purple-100 shadow-lg cursor-pointer transition-all hover:shadow-xl ${
-                notification.read 
+                notification.is_read 
                   ? 'bg-white/60' 
                   : 'bg-white/90 border-l-4 border-l-purple-500'
               }`}
-              onClick={() => markAsRead(notification.id)}
+              onClick={() => handleMarkAsRead(notification.id)}
             >
               <CardContent className="p-4">
                 <div className="flex items-start space-x-4">
-                  <img 
-                    src={notification.avatar} 
-                    alt="User"
-                    className="w-10 h-10 rounded-full border-2 border-purple-200"
-                  />
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center text-white font-semibold">
+                    {notification.actor_name.charAt(0)}
+                  </div>
                   
                   <div className="flex-1">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center space-x-2">
                         {getNotificationIcon(notification.type)}
-                        <p className={`text-sm ${notification.read ? 'text-gray-600' : 'text-gray-900 font-medium'}`}>
-                          {notification.message}
+                        <p className={`text-sm ${notification.is_read ? 'text-gray-600' : 'text-gray-900 font-medium'}`}>
+                          {getNotificationMessage(notification)}
                         </p>
                       </div>
                       
-                      {!notification.read && (
+                      {!notification.is_read && (
                         <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                       )}
                     </div>
                     
-                    <p className="text-xs text-gray-500 mt-1">{notification.time}</p>
-                    
-                    {notification.type === 'friend_request' && !notification.read && (
-                      <div className="flex space-x-2 mt-3">
-                        <Button 
-                          size="sm"
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          Accept
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          Decline
-                        </Button>
-                      </div>
-                    )}
+                    <p className="text-xs text-gray-500 mt-1">
+                      {notification.created_at && formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                    </p>
                   </div>
                 </div>
               </CardContent>

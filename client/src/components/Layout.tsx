@@ -2,6 +2,7 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import NotificationDropdown from "@/components/NotificationDropdown";
 import {
   Home,
   User,
@@ -109,6 +110,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </nav>
 
             <div className="flex items-center space-x-4">
+              <NotificationDropdown />
+              
               <div className="flex items-center space-x-2">
                 <img
                   src={resolveImageUrl(user?.profile_picture || "")}
