@@ -26,8 +26,8 @@ test.describe('Profile Workflow', () => {
     // Wait for profile card to load (Card component with user info)
     await page.waitForSelector('div.rounded-lg.border', { timeout: 10000 });
 
-    // Should show user's name somewhere on the page
-    await expect(page.locator('text=/Carolyn|Johnson/i').first()).toBeVisible();
+    // Should show user's name somewhere on the page (Test User is the default test account)
+    await expect(page.locator('h1:has-text("Test User")').first()).toBeVisible();
   });
 
   test('should have edit profile button on own profile', async ({ page }) => {

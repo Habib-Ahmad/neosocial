@@ -1,13 +1,13 @@
 name: CI/CD Pipeline
 
 # Triggers:
-# 1. Push - runs on any push to any branch
-# 2. Pull Request - runs on PRs to main
-# 3. Schedule - runs every night at 2 AM UTC
+# 1. Push - runs on pushes to main branch only
+# 2. Pull Request - runs on PRs to main (fast tests only: unit + integration)
+# 3. Schedule - runs full suite nightly at 2 AM UTC
 # 4. Manual - can be triggered manually from GitHub Actions tab
 on:
   push:
-    branches: ['**']
+    branches: [main]
   pull_request:
     branches: [main]
   schedule:
@@ -30,8 +30,8 @@ env:
 
 jobs:
   # Runs Jest unit tests
-  test:
-    name: Run Tests
+  unit-tests:
+    name: Unit Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -47,20 +47,209 @@ jobs:
         working-directory: ./server
         run: npm ci
 
-      - name: Run server unit tests
+      - name: Run unit tests
         working-directory: ./server
-        run: npm test
+        run: npm test -- --testPathPattern=unit --silent
         env:
           NEO4J_URI: ${{ secrets.NEO4J_URI }}
           NEO4J_USER: ${{ secrets.NEO4J_USER }}
           NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
           TOKEN_SECRET: ${{ secrets.TOKEN_SECRET }}
 
+      - name: Upload unit test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: server/coverage/
+
+  # Runs Jest integration tests
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [unit-tests]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install server dependencies
+        working-directory: ./server
+        run: npm ci
+
+      - name: Run integration tests
+        working-directory: ./server
+        run: npm test -- --testPathPattern=integration --silent
+        env:
+          NEO4J_URI: ${{ secrets.NEO4J_URI }}
+          NEO4J_USER: ${{ secrets.NEO4J_USER }}
+          NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+          TOKEN_SECRET: ${{ secrets.TOKEN_SECRET }}
+
+      - name: Upload integration test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: server/coverage/
+
+  # Runs Playwright E2E tests (UI/API tests)
+  e2e-tests:
+    name: E2E Tests (UI/API)
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install client dependencies
+        working-directory: ./client
+        run: npm ci
+
+      - name: Install server dependencies
+        working-directory: ./server
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Start backend server
+        working-directory: ./server
+        run: npm run dev &
+        env:
+          NEO4J_URI: ${{ secrets.NEO4J_URI }}
+          NEO4J_USER: ${{ secrets.NEO4J_USER }}
+          NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+          TOKEN_SECRET: ${{ secrets.TOKEN_SECRET }}
+
+      - name: Start frontend server
+        working-directory: ./client
+        run: npm run dev &
+        env:
+          VITE_API_BASE_URL: http://localhost:5000/api
+          VITE_IMG_BASE_URL: http://localhost:5000
+
+      - name: Wait for servers to be ready
+        run: |
+          echo "Waiting for backend on port 5000..."
+          npx wait-on http://localhost:5000 --timeout 60000
+          echo "Waiting for frontend on port 8080..."
+          npx wait-on http://localhost:8080 --timeout 60000
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+      - name: Upload E2E test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: |
+            playwright-report/
+            test-results/
+
+  # Generate test report dashboard
+  test-report:
+    name: Test Report & Coverage
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+    if: always()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install server dependencies
+        working-directory: ./server
+        run: npm ci
+
+      - name: Generate coverage report
+        working-directory: ./server
+        run: npm run test:coverage -- --silent
+        env:
+          NEO4J_URI: ${{ secrets.NEO4J_URI }}
+          NEO4J_USER: ${{ secrets.NEO4J_USER }}
+          NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+          TOKEN_SECRET: ${{ secrets.TOKEN_SECRET }}
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            server/coverage/lcov-report/
+            server/coverage/coverage-summary.json
+            server/coverage/coverage-final.json
+
+      - name: Comment coverage on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            try {
+              // Read coverage summary (generated by Jest)
+              const coveragePath = 'server/coverage/coverage-summary.json';
+              if (!fs.existsSync(coveragePath)) {
+                console.log('Coverage summary not found, skipping PR comment');
+                return;
+              }
+              
+              const coverageSummary = JSON.parse(fs.readFileSync(coveragePath, 'utf8'));
+              const totals = coverageSummary.total;
+              
+              if (!totals) {
+                console.log('No coverage totals found');
+                return;
+              }
+              
+              const pct = (metric) => totals[metric]?.pct || 0;
+              
+              const comment = `## 📊 Test Coverage Report\n\n` +
+                `| Metric | Coverage | Status |\n` +
+                `|--------|----------|--------|\n` +
+                `| Statements | ${pct('statements')}% | ${pct('statements') >= 70 ? '✅' : '❌'} |\n` +
+                `| Branches | ${pct('branches')}% | ${pct('branches') >= 60 ? '✅' : '❌'} |\n` +
+                `| Functions | ${pct('functions')}% | ${pct('functions') >= 70 ? '✅' : '❌'} |\n` +
+                `| Lines | ${pct('lines')}% | ${pct('lines') >= 70 ? '✅' : '❌'} |\n\n` +
+                `**Thresholds:** Statements/Functions/Lines ≥ 70%, Branches ≥ 60%`;
+              
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            } catch (error) {
+              console.error('Error generating coverage comment:', error);
+              // Don't fail the workflow if coverage comment fails
+            }
+
   # Compiles TypeScript and bundles React for production
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [test]
+    needs: [unit-tests, integration-tests, e2e-tests]
+    if: success()
 
     steps:
       - name: Checkout code
