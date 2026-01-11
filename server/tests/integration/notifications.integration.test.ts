@@ -53,6 +53,11 @@ describe('Notification Integration Tests', () => {
     authToken = loginResponse.body.token;
   }, 15000);
 
+  afterAll(async () => {
+    await cleanupTestData();
+    await driver.close();
+  });
+
   describe('GET /api/notifications/', () => {
     it('should retrieve notifications for authenticated user', async () => {
       // Create another user who will like the post
