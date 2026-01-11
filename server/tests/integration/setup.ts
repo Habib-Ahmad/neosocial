@@ -20,10 +20,14 @@ export const cleanupTestData = async () => {
       WHERE n.email CONTAINS 'test@'
          OR n.email CONTAINS 'integration@'
          OR n.email CONTAINS '@test.com'
+         OR n.email CONTAINS '@notiftest.com'
          OR n.username CONTAINS 'test'
          OR n.id CONTAINS 'test'
          OR n.id CONTAINS 'friend-'
          OR n.id CONTAINS 'post-test'
+         OR n.id CONTAINS 'notif-'
+         OR n.id CONTAINS 'other-'
+         OR n.id CONTAINS 'liker-'
       DETACH DELETE n
     `);
 
