@@ -51,7 +51,7 @@ npm install
 
 - Install Neo4j Desktop or use a cloud instance.
 - Create a new database and note the connection details.
-- The db schema file /db-schema.cypher contains the initial schema for Neo4j. You can run it in the Neo4j browser to set up the necessary nodes and relationships.
+- The db schema file /db-schema.cypher contains the initial schema for Neo4j. You can run it in the Neo4j browser to set up the necessary nodes and relationships
 
 4. **Configure environment variables**
    Create a `.env` file in the `server` directory with the following content:

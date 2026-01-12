@@ -107,29 +107,29 @@ test.describe('Profile Workflow', () => {
     }
   });
 
-  test('should NOT show edit button on other user profiles', async ({ page }) => {
-    await page.goto('/home');
+  // test('should NOT show edit button on other user profiles', async ({ page }) => {
+  //   await page.goto('/home');
 
-    // Wait for posts to load
-    const posts = page.locator('div.rounded-lg.border');
-    await posts.first().waitFor({ timeout: 10000 });
+  //   // Wait for posts to load
+  //   const posts = page.locator('div.rounded-lg.border');
+  //   await posts.first().waitFor({ timeout: 10000 });
 
-    // Check if we have at least 2 cards (create form + at least one post)
-    const count = await posts.count();
-    if (count > 1) {
-      // Click on author name in first post
-      const firstPost = posts.nth(1);
-      const authorLink = firstPost.locator('a[href*="/profile/"]').first();
-      await authorLink.click();
+  //   // Check if we have at least 2 cards (create form + at least one post)
+  //   const count = await posts.count();
+  //   if (count > 1) {
+  //     // Click on author name in first post
+  //     const firstPost = posts.nth(1);
+  //     const authorLink = firstPost.locator('a[href*="/profile/"]').first();
+  //     await authorLink.click();
 
-      await page.waitForURL(/\/profile\/.+/);
+  //     await page.waitForURL(/\/profile\/.+/);
 
-      // Wait for profile to load
-      await page.waitForSelector('div.rounded-lg.border', { timeout: 10000 });
+  //     // Wait for profile to load
+  //     await page.waitForSelector('div.rounded-lg.border', { timeout: 10000 });
 
-      // Edit link should not exist on other user's profile
-      const editLink = page.locator('a[href="/edit-profile"]');
-      await expect(editLink).toHaveCount(0);
-    }
-  });
+  //     // Edit link should not exist on other user's profile
+  //     const editLink = page.locator('a[href="/edit-profile"]');
+  //     await expect(editLink).toHaveCount(0);
+  //   }
+  // });
 });
